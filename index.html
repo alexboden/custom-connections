@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Connections</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'NY Times Karnak', Georgia, serif;
+            background: #fff;
+            color: #000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 32px 20px;
+        }
+        h1 { font-size: 2rem; margin-bottom: 4px; font-weight: 700; }
+        .subtitle { color: #6f6f6f; margin-bottom: 32px; font-size: 0.95rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+        /* Creator */
+        #creator { width: 100%; max-width: 540px; }
+        .group-input {
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            background: #f0f0f0;
+        }
+        .group-input label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .group-input input {
+            width: 100%;
+            padding: 12px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #fff;
+            color: #000;
+            font-size: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .group-input input:focus { outline: 2px solid #000; }
+        .group-input input::placeholder { color: #999; }
+        .cat-input { margin-bottom: 10px; }
+        .word-boxes {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .word-boxes input { text-align: center; font-weight: 500; }
+
+        #creator-error {
+            background: #fdecea;
+            color: #611a15;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.8; }
+        .btn-primary { background: #000; color: #fff; }
+        .btn-secondary { background: #fff; color: #000; border: 1px solid #ddd; }
+        .btn-submit { background: #000; color: #fff; margin-top: 8px; width: 100%; padding: 16px; }
+
+        /* Game */
+        #game { width: 100%; max-width: 500px; display: none; }
+        .solved-groups { margin-bottom: 8px; }
+        .solved-group {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            text-align: center;
+            animation: reveal 0.4s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        @keyframes reveal {
+            from { transform: scaleY(0); opacity: 0; }
+            to { transform: scaleY(1); opacity: 1; }
+        }
+        .solved-group .group-name { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
+        .solved-group .group-words { font-size: 0.9rem; margin-top: 4px; }
+        .bg-yellow { background: #f9df6d; }
+        .bg-green { background: #a0c35a; }
+        .bg-blue { background: #b0c4ef; }
+        .bg-purple { background: #ba81c5; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .tile {
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px 6px;
+            border-radius: 8px;
+            background: #efefe6;
+            font-weight: 700;
+            font-size: clamp(0.6rem, 2.5vw, 0.85rem);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s, transform 0.1s;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+        .tile:hover { background: #e2e2d8; }
+        .tile.selected { background: #5a594e; color: #fff; transform: scale(0.97); }
+        .tile.wrong { animation: shake 0.4s ease; }
+        @keyframes shake {
+            25% { transform: translateX(-4px); }
+            50% { transform: translateX(4px); }
+            75% { transform: translateX(-4px); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .mistakes {
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .mistakes .dot {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: #5a594e;
+            margin: 0 3px;
+        }
+        .mistakes .dot.used { background: #ddd; }
+
+        .message {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .message.error { background: #fdecea; color: #611a15; }
+        .message.success { background: #e8f5e9; color: #1b5e20; }
+        .message.info { background: #e3f2fd; color: #0d47a1; }
+
+        /* Share modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px;
+            max-width: 480px;
+            width: 90%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .modal h2 { margin-bottom: 16px; font-family: Georgia, serif; }
+        .modal .link-box {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 14px;
+            word-break: break-all;
+            font-size: 0.8rem;
+            margin-bottom: 16px;
+            max-height: 100px;
+            overflow-y: auto;
+            color: #333;
+        }
+        .modal .btn { margin-right: 8px; }
+
+        /* Result */
+        #result { display: none; text-align: center; max-width: 500px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        #result h2 { margin-bottom: 16px; font-family: Georgia, serif; }
+        #result .emoji-grid { font-size: 1.8rem; line-height: 2; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Custom Connections</h1>
+    <p class="subtitle">Create and share your own Connections puzzle</p>
+
+    <!-- CREATOR VIEW -->
+    <div id="creator">
+        <div id="group-inputs"></div>
+        <button class="btn btn-submit" onclick="generateLink()">Create Puzzle</button>
+    </div>
+
+    <!-- GAME VIEW -->
+    <div id="game">
+        <div class="message info" id="game-message" style="display:none;"></div>
+        <div class="solved-groups" id="solved-groups"></div>
+        <div class="grid" id="grid"></div>
+        <div class="mistakes" id="mistakes"></div>
+        <div class="controls">
+            <button class="btn btn-secondary" onclick="deselectAll()">Deselect All</button>
+            <button class="btn btn-secondary" onclick="shuffleTiles()">Shuffle</button>
+            <button class="btn btn-primary" id="submit-btn" onclick="submitGuess()">Submit</button>
+        </div>
+    </div>
+
+    <!-- RESULT VIEW -->
+    <div id="result">
+        <h2 id="result-title"></h2>
+        <div class="emoji-grid" id="emoji-grid"></div>
+        <div class="controls">
+            <button class="btn btn-secondary" onclick="copyResult()">Share Result</button>
+            <button class="btn btn-primary" onclick="location.hash=''; location.reload();">Create Your Own</button>
+        </div>
+    </div>
+
+    <!-- SHARE MODAL -->
+    <div class="modal-overlay" id="share-modal">
+        <div class="modal">
+            <h2>Share this puzzle</h2>
+            <div class="link-box" id="share-link"></div>
+            <button class="btn btn-primary" onclick="copyLink()">Copy Link</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const COLORS = ['yellow', 'green', 'blue', 'purple'];
+        const EMOJIS = { yellow: '\u{1F7E8}', green: '\u{1F7E9}', blue: '\u{1F7E6}', purple: '\u{1F7EA}' };
+
+        let gameData = null;
+        let selected = [];
+        let solved = [];
+        let mistakesLeft = 4;
+        let guessHistory = [];
+
+        // --- INIT ---
+        function init() {
+            const hash = location.hash.slice(1);
+            if (hash) {
+                try {
+                    const json = atob(decodeURIComponent(hash));
+                    gameData = JSON.parse(json);
+                    showGame();
+                } catch (e) {
+                    alert('Invalid puzzle link!');
+                    location.hash = '';
+                    showCreator();
+                }
+            } else {
+                showCreator();
+            }
+        }
+
+        // --- CREATOR ---
+        function showCreator() {
+            document.getElementById('creator').style.display = 'block';
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('result').style.display = 'none';
+            renderGroupInputs();
+        }
+
+        function renderGroupInputs() {
+            const container = document.getElementById('group-inputs');
+            container.innerHTML = COLORS.map((color, i) => `
+                <div class="group-input">
+                    <label>Group ${i + 1} (${color})</label>
+                    <input class="cat-input" type="text" placeholder="Category name" id="cat-${i}">
+                    <div class="word-boxes">
+                        <input type="text" placeholder="Word 1" id="word-${i}-0">
+                        <input type="text" placeholder="Word 2" id="word-${i}-1">
+                        <input type="text" placeholder="Word 3" id="word-${i}-2">
+                        <input type="text" placeholder="Word 4" id="word-${i}-3">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function generateLink() {
+            const groups = [];
+            const errors = [];
+            for (let i = 0; i < 4; i++) {
+                const category = document.getElementById(`cat-${i}`).value.trim();
+                const words = [];
+                const missing = [];
+                for (let j = 0; j < 4; j++) {
+                    const w = document.getElementById(`word-${i}-${j}`).value.trim();
+                    if (w) words.push(w);
+                    else missing.push(j + 1);
+                }
+                if (!category) errors.push(`<strong>${COLORS[i]} group</strong>: missing category name`);
+                if (missing.length > 0) errors.push(`<strong>${COLORS[i]} group</strong>: missing word${missing.length > 1 ? 's' : ''} ${missing.join(', ')}`);
+                groups.push({ category, words, color: COLORS[i] });
+            }
+            const allWords = groups.flatMap(g => g.words);
+            const seen = new Set();
+            const dupes = new Set();
+            allWords.forEach(w => {
+                const lower = w.toLowerCase();
+                if (seen.has(lower)) dupes.add(w);
+                seen.add(lower);
+            });
+            if (dupes.size > 0) errors.push(`<strong>Duplicate words</strong>: ${[...dupes].join(', ')}`);
+
+            if (errors.length > 0) {
+                showCreatorError(errors.join('<br>'));
+                return;
+            }
+            gameData = { groups };
+            const encoded = encodeURIComponent(btoa(JSON.stringify(gameData)));
+            const url = location.origin + location.pathname + '#' + encoded;
+            document.getElementById('share-link').textContent = url;
+            document.getElementById('share-modal').classList.add('active');
+            hideCreatorError();
+        }
+
+        function showCreatorError(html) {
+            let el = document.getElementById('creator-error');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'creator-error';
+                document.getElementById('creator').insertBefore(el, document.querySelector('.btn-submit'));
+            }
+            el.style.display = 'block';
+            el.innerHTML = html;
+        }
+
+        function hideCreatorError() {
+            const el = document.getElementById('creator-error');
+            if (el) el.style.display = 'none';
+        }
+
+        function copyLink() {
+            const link = document.getElementById('share-link').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = event.target;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy Link', 2000);
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('share-modal').classList.remove('active');
+        }
+
+        // --- GAME ---
+        function showGame() {
+            document.getElementById('creator').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            selected = [];
+            solved = [];
+            mistakesLeft = 4;
+            guessHistory = [];
+            renderMistakes();
+            renderGrid();
+        }
+
+        function getAllWords() {
+            const words = [];
+            gameData.groups.forEach(g => {
+                g.words.forEach(w => words.push({ word: w, color: g.color, category: g.category }));
+            });
+            return words;
+        }
+
+        function getRemaining() {
+            const solvedWords = new Set(solved.flatMap(g => g.words));
+            return getAllWords().filter(w => !solvedWords.has(w.word));
+        }
+
+        function renderGrid() {
+            const remaining = getRemaining();
+            const grid = document.getElementById('grid');
+            grid.innerHTML = remaining.map(item => `
+                <div class="tile" data-word="${item.word}" onclick="toggleTile(this)">
+                    ${item.word}
+                </div>
+            `).join('');
+        }
+
+        function shuffleTiles() {
+            const grid = document.getElementById('grid');
+            const tiles = [...grid.children];
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                grid.appendChild(tiles[j]);
+                tiles.splice(j, 1, tiles[i]);
+            }
+        }
+
+        function toggleTile(el) {
+            const word = el.dataset.word;
+            if (el.classList.contains('selected')) {
+                el.classList.remove('selected');
+                selected = selected.filter(w => w !== word);
+            } else {
+                if (selected.length >= 4) return;
+                el.classList.add('selected');
+                selected.push(word);
+            }
+            document.getElementById('submit-btn').style.opacity = selected.length === 4 ? '1' : '0.5';
+        }
+
+        function deselectAll() {
+            selected = [];
+            document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
+            document.getElementById('submit-btn').style.opacity = '0.5';
+        }
+
+        function submitGuess() {
+            if (selected.length !== 4) return;
+            const match = gameData.groups.find(g =>
+                g.words.every(w => selected.includes(w)) && g.words.length === selected.length
+            );
+            if (match) {
+                solved.push(match);
+                guessHistory.push({ words: [...selected], color: match.color, correct: true });
+                selected = [];
+                renderSolved();
+                renderGrid();
+                document.getElementById('submit-btn').style.opacity = '0.5';
+                hideMessage();
+                if (solved.length === 4) endGame(true);
+            } else {
+                const oneAway = gameData.groups.some(g => {
+                    const overlap = g.words.filter(w => selected.includes(w));
+                    return overlap.length === 3;
+                });
+                guessHistory.push({ words: [...selected], correct: false });
+                mistakesLeft--;
+                renderMistakes();
+                if (oneAway) showMessage('One away!', 'error');
+                else showMessage('Incorrect', 'error');
+
+                document.querySelectorAll('.tile.selected').forEach(t => {
+                    t.classList.add('wrong');
+                    setTimeout(() => t.classList.remove('wrong'), 400);
+                });
+                deselectAll();
+                if (mistakesLeft === 0) endGame(false);
+            }
+        }
+
+        function renderSolved() {
+            const container = document.getElementById('solved-groups');
+            container.innerHTML = solved.map(g => `
+                <div class="solved-group bg-${g.color}">
+                    <div class="group-name">${g.category}</div>
+                    <div class="group-words">${g.words.join(', ')}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderMistakes() {
+            const container = document.getElementById('mistakes');
+            let html = 'Mistakes remaining: ';
+            for (let i = 0; i < 4; i++) {
+                html += `<span class="dot ${i >= mistakesLeft ? 'used' : ''}"></span>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function showMessage(text, type) {
+            const el = document.getElementById('game-message');
+            el.textContent = text;
+            el.className = `message ${type}`;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 2000);
+        }
+
+        function hideMessage() {
+            document.getElementById('game-message').style.display = 'none';
+        }
+
+        function endGame(won) {
+            if (!won) {
+                gameData.groups.forEach(g => {
+                    if (!solved.find(s => s.category === g.category)) {
+                        solved.push(g);
+                        guessHistory.push({ words: g.words, color: g.color, correct: true, revealed: true });
+                    }
+                });
+                renderSolved();
+            }
+            document.getElementById('grid').innerHTML = '';
+            document.querySelector('.controls').style.display = 'none';
+            document.getElementById('mistakes').style.display = 'none';
+
+            setTimeout(() => {
+                document.getElementById('game').style.display = 'none';
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('result-title').textContent = won ? 'Congratulations!' : 'Better luck next time!';
+                renderEmojiGrid();
+            }, 800);
+        }
+
+        function renderEmojiGrid() {
+            const lines = guessHistory
+                .filter(g => !g.revealed)
+                .map(guess => {
+                    if (guess.correct) {
+                        return EMOJIS[guess.color].repeat(4);
+                    } else {
+                        return guess.words.map(w => {
+                            const item = getAllWords().find(i => i.word === w);
+                            return EMOJIS[item.color];
+                        }).join('');
+                    }
+                });
+            document.getElementById('emoji-grid').innerHTML = lines.join('<br>');
+        }
+
+        function copyResult() {
+            const lines = guessHistory
+                .filter(g => !g.revealed)
+                .map(guess => {
+                    if (guess.correct) {
+                        return EMOJIS[guess.color].repeat(4);
+                    } else {
+                        return guess.words.map(w => {
+                            const item = getAllWords().find(i => i.word === w);
+                            return EMOJIS[item.color];
+                        }).join('');
+                    }
+                });
+            const text = 'Custom Connections\n' + lines.join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                event.target.textContent = 'Copied!';
+                setTimeout(() => event.target.textContent = 'Share Result', 2000);
+            });
+        }
+
+        window.addEventListener('load', () => {
+            init();
+            if (gameData && location.hash) setTimeout(shuffleTiles, 100);
+        });
+    </script>
+</body>
+</html>
