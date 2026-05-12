@@ -78,23 +78,20 @@
             display: block;
         }
         .puzzle-card:hover { border-color: #000; transform: translateY(-2px); }
-        .puzzle-categories {
+        .puzzle-title {
+            font-size: 1.1rem;
+            font-weight: 700;
             margin-bottom: 12px;
-        }
-        .puzzle-categories span {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-right: 4px;
-            margin-bottom: 4px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .cat-yellow { background: #f9df6d; }
-        .cat-green { background: #a0c35a; }
-        .cat-blue { background: #b0c4ef; }
-        .cat-purple { background: #ba81c5; }
+        .puzzle-author {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: #666;
+            text-transform: none;
+            letter-spacing: 0;
+        }
         .puzzle-stats {
             display: flex;
             gap: 16px;
@@ -153,9 +150,24 @@
 
         function deserialize(str) {
             return str.split('|').map((part, i) => {
-                const [category] = part.split('~');
-                return { category, color: COLORS[i] };
+                const pieces = part.split('~');
+                const category = pieces[0];
+                const words = pieces.slice(1);
+                return { category, words, color: COLORS[i] };
             });
+        }
+
+        function getPuzzleTitle(categories, puzzleId) {
+            // Pick one consistent word from the puzzle using the ID as a seed
+            const allWords = categories.flatMap(c => c.words);
+            if (allWords.length === 0) return 'Puzzle';
+            let hash = 0;
+            for (let i = 0; i < puzzleId.length; i++) {
+                hash = ((hash << 5) - hash) + puzzleId.charCodeAt(i);
+                hash |= 0;
+            }
+            const index = Math.abs(hash) % allWords.length;
+            return allWords[index].toUpperCase();
         }
 
         async function loadPuzzles(reset = false) {
@@ -165,7 +177,7 @@
                 document.getElementById('puzzle-grid').innerHTML = '<div class="loading">Loading puzzles...</div>';
             }
 
-            let query = supabaseClient.from('puzzle_stats').select('*');
+            let query = supabaseClient.from('puzzle_stats').select('*, profiles:creator_id(username)');
 
             if (currentSort === 'completion_pct_asc') {
                 query = query.order('completion_pct', { ascending: true }).gt('play_count', 0);
@@ -206,15 +218,14 @@
             data.forEach(puzzle => {
                 const categories = deserialize(puzzle.data);
                 const date = new Date(puzzle.created_at).toLocaleDateString();
+                const username = puzzle.profiles?.username;
                 const card = document.createElement('a');
                 card.className = 'puzzle-card';
                 card.href = '/?p=' + puzzle.id;
                 card.innerHTML = `
-                    <div class="puzzle-categories">
-                        ${categories.map(c => `<span class="cat-${c.color}">${c.category}</span>`).join('')}
-                    </div>
+                    <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}</div>
                     <div class="puzzle-stats">
-                        <span>&#9829; ${puzzle.vote_count}</span>
+                        <span>&#9650;${puzzle.vote_count}</span>
                         <span>&#9654; ${puzzle.play_count} plays</span>
                         <span>${puzzle.completion_pct}% solved</span>
                     </div>
