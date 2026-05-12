@@ -353,7 +353,7 @@
                 const username = puzzle._username;
                 const card = document.createElement('a');
                 card.className = 'puzzle-card';
-                card.href = '/p/' + puzzle.id;
+                card.href = '/play.html?p=' + puzzle.id;
                 const solvedBadge = userPlays.has(puzzle.id) ? '<span class="puzzle-solved">Solved</span>' : '';
                 card.innerHTML = `
                     <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id, puzzle.name)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}${solvedBadge}</div>
@@ -411,7 +411,7 @@
             let unsolved = data.filter(p => !userPlays.has(p.id));
             if (unsolved.length === 0) unsolved = data; // fallback to all if everything solved
             const random = unsolved[Math.floor(Math.random() * unsolved.length)];
-            window.location.href = '/p/' + random.id;
+            window.location.href = '/play.html?p=' + random.id;
         }
 
         window.addEventListener('load', async () => {

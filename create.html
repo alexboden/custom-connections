@@ -282,7 +282,7 @@
                     showCreatorError('Failed to save puzzle. Please try again.');
                     return;
                 }
-                url = location.origin + '/p/' + id;
+                url = location.origin + '/play.html?p=' + id;
             } else {
                 const encoded = await compress(serialized);
                 url = location.origin + '/play.html#' + encoded;
