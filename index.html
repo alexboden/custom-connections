@@ -270,7 +270,7 @@
         <div class="solved-groups" id="result-solved-groups" style="margin-top: 16px; width: 100%;"></div>
         <div class="controls">
             <button class="btn btn-secondary" onclick="copyResult(this)">Share Result</button>
-            <button class="btn btn-primary" onclick="location.hash=''; location.reload();">Create Your Own</button>
+            <button class="btn btn-primary" onclick="sessionStorage.removeItem('puzzle'); location.hash=''; location.reload();">Create Your Own</button>
         </div>
     </div>
 
