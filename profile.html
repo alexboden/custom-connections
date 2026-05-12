@@ -41,6 +41,79 @@
             font-weight: 500;
         }
         .nav-links a:hover { text-decoration: underline; }
+        .help-btn {
+            position: fixed;
+            top: 14px;
+            right: 16px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #000;
+            background: #fff;
+            font-family: Georgia, serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .help-btn:hover { background: #f0f0f0; }
+        .help-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        .help-modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .help-modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            text-align: left;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+        .help-modal-overlay.active .help-modal { transform: scale(1); }
+        .help-modal h2 { text-align: center; margin-bottom: 16px; font-family: Georgia, serif; }
+        .help-modal p {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        .help-modal .color-legend {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 12px 0;
+        }
+        .help-modal .color-legend span {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+        .help-modal .btn-close {
+            display: block;
+            margin: 16px auto 0;
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 8px 24px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .help-modal .btn-close:hover { border-color: #000; }
 
         .profile-header {
             display: flex;
@@ -116,13 +189,30 @@
         }
         .sign-in-btn:hover { opacity: 0.8; }
 
-        .edit-profile {
+        .edit-section {
             margin-bottom: 32px;
+        }
+        .edit-toggle {
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 8px 18px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.2s;
+        }
+        .edit-toggle:hover { background: #f5f5f5; border-color: #bbb; }
+        .edit-fields {
+            display: none;
+            margin-top: 16px;
             padding: 20px;
             background: #f9f9f9;
             border-radius: 12px;
         }
-        .edit-profile label {
+        .edit-fields.open { display: block; }
+        .edit-fields label {
             display: block;
             font-size: 0.75rem;
             text-transform: uppercase;
@@ -131,7 +221,7 @@
             margin-bottom: 6px;
             font-weight: 600;
         }
-        .edit-profile input {
+        .edit-fields input {
             width: 100%;
             padding: 10px 12px;
             border: 1px solid #ddd;
@@ -139,8 +229,9 @@
             font-size: 0.95rem;
             margin-bottom: 12px;
         }
-        .edit-profile input:focus { outline: 2px solid #000; border-color: transparent; }
-        .edit-profile button {
+        .edit-fields input:focus { outline: 2px solid #000; border-color: transparent; }
+        .edit-fields .btn-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+        .edit-fields button {
             background: #000;
             color: #fff;
             border: none;
@@ -150,13 +241,26 @@
             font-weight: 500;
             cursor: pointer;
         }
-        .edit-profile button:hover { opacity: 0.8; }
-        .edit-profile .save-msg {
+        .edit-fields button:hover { opacity: 0.8; }
+        .edit-fields .save-msg {
             display: inline-block;
-            margin-left: 12px;
             font-size: 0.85rem;
             color: #1b5e20;
         }
+        .password-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+        .password-section button.change-pw-btn {
+            background: none;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 16px;
+            padding: 8px 16px;
+            font-size: 0.82rem;
+        }
+        .password-section button.change-pw-btn:hover { background: #f5f5f5; }
         .loading { text-align: center; padding: 40px; color: #999; }
         .empty { color: #999; font-size: 0.9rem; padding: 12px 0; }
     </style>
@@ -165,6 +269,26 @@
     <div class="nav-links">
         <a href="/">Create</a>
         <a href="/browse.html">Browse</a>
+    </div>
+    <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
+
+    <!-- HELP MODAL -->
+    <div class="help-modal-overlay" id="help-modal" onclick="if(event.target===this)this.classList.remove('active')">
+        <div class="help-modal">
+            <h2>How to Play</h2>
+            <p>Find groups of four words that share something in common.</p>
+            <p>Select four words and tap <strong>Submit</strong> to check if they form a group. You get 4 mistakes before the game ends.</p>
+            <p>Each puzzle has exactly four groups. The color indicates difficulty:</p>
+            <div class="color-legend">
+                <span style="background:#f9df6d"></span>
+                <span style="background:#a0c35a"></span>
+                <span style="background:#b0c4ef"></span>
+                <span style="background:#ba81c5"></span>
+            </div>
+            <p style="text-align:center; font-size:0.8rem; color:#666;">Easiest → Hardest</p>
+            <p>You can also <strong>create your own puzzle</strong> — pick four groups of four words, and share the link with friends!</p>
+            <button class="btn-close" onclick="document.getElementById('help-modal').classList.remove('active')">Got it</button>
+        </div>
     </div>
 
     <h1>Profile</h1>
@@ -182,9 +306,23 @@
 
         function deserialize(str) {
             return str.split('|').map((part, i) => {
-                const [category] = part.split('~');
-                return { category, color: COLORS[i] };
+                const pieces = part.split('~');
+                const category = pieces[0];
+                const words = pieces.slice(1);
+                return { category, words, color: COLORS[i] };
             });
+        }
+
+        function getPuzzleTitle(categories, puzzleId) {
+            const allWords = categories.flatMap(c => c.words);
+            if (allWords.length === 0) return 'Puzzle';
+            let hash = 0;
+            for (let i = 0; i < puzzleId.length; i++) {
+                hash = ((hash << 5) - hash) + puzzleId.charCodeAt(i);
+                hash |= 0;
+            }
+            const index = Math.abs(hash) % allWords.length;
+            return allWords[index].toUpperCase();
         }
 
         function showSignInPrompt() {
@@ -196,12 +334,24 @@
             `;
         }
 
+        function toggleEdit() {
+            document.getElementById('edit-fields').classList.toggle('open');
+        }
+
         async function saveProfile() {
-            const username = document.getElementById('input-username').value.trim();
+            const username = document.getElementById('input-username').value.trim().toLowerCase();
             const displayName = document.getElementById('input-display-name').value.trim();
 
+            if (!username || !/^[a-zA-Z0-9_-]{3,24}$/.test(username)) {
+                const msg = document.getElementById('save-msg');
+                msg.style.color = '#611a15';
+                msg.textContent = 'Username required (3-24 chars, letters/numbers/hyphens/underscores)';
+                setTimeout(() => msg.textContent = '', 3000);
+                return;
+            }
+
             const { error } = await supabaseClient.from('profiles').update({
-                username: username || null,
+                username: username,
                 display_name: displayName || null
             }).eq('id', currentUser.id);
 
@@ -212,8 +362,36 @@
             } else {
                 msg.style.color = '#1b5e20';
                 msg.textContent = 'Saved!';
+                // Update header display
+                document.getElementById('profile-display-username').textContent = '@' + username;
+                if (displayName) {
+                    document.getElementById('profile-display-name').textContent = displayName;
+                }
             }
             setTimeout(() => msg.textContent = '', 2000);
+        }
+
+        async function changePassword() {
+            const newPw = document.getElementById('input-new-password').value;
+            const msg = document.getElementById('pw-msg');
+            msg.textContent = '';
+
+            if (newPw.length < 6) {
+                msg.style.color = '#611a15';
+                msg.textContent = 'Password must be at least 6 characters';
+                return;
+            }
+
+            const { error } = await supabaseClient.auth.updateUser({ password: newPw });
+            if (error) {
+                msg.style.color = '#611a15';
+                msg.textContent = error.message;
+            } else {
+                msg.style.color = '#1b5e20';
+                msg.textContent = 'Password updated!';
+                document.getElementById('input-new-password').value = '';
+            }
+            setTimeout(() => msg.textContent = '', 3000);
         }
 
         async function loadProfile() {
@@ -253,22 +431,37 @@
             const totalCreated = puzzles?.length || 0;
             const totalVotes = puzzles?.reduce((sum, p) => sum + p.vote_count, 0) || 0;
 
+            const displayUsername = username ? '@' + username : email;
+
             let html = `
                 <div class="profile-header">
                     ${avatar ? `<img src="${avatar}" class="profile-avatar" alt="">` : '<div class="profile-avatar"></div>'}
                     <div>
-                        <div class="profile-name">${name}</div>
-                        <div class="profile-email">${email}</div>
+                        <div class="profile-name" id="profile-display-username">${displayUsername}</div>
+                        <div class="profile-email" id="profile-display-name">${username ? name : ''}</div>
                     </div>
                 </div>
 
-                <div class="edit-profile">
-                    <label>Username</label>
-                    <input type="text" id="input-username" value="${username}" placeholder="Choose a username">
-                    <label>Display Name</label>
-                    <input type="text" id="input-display-name" value="${name}" placeholder="Your display name">
-                    <button onclick="saveProfile()">Save</button>
-                    <span class="save-msg" id="save-msg"></span>
+                <div class="edit-section">
+                    <button class="edit-toggle" onclick="toggleEdit()">Edit Profile</button>
+                    <div class="edit-fields" id="edit-fields">
+                        <label>Username</label>
+                        <input type="text" id="input-username" value="${username}" placeholder="Choose a username" pattern="[a-zA-Z0-9_-]+" minlength="3" maxlength="24">
+                        <label>Display Name</label>
+                        <input type="text" id="input-display-name" value="${name}" placeholder="Your display name">
+                        <div class="btn-row">
+                            <button onclick="saveProfile()">Save</button>
+                            <span class="save-msg" id="save-msg"></span>
+                        </div>
+                        <div class="password-section">
+                            <label>New Password</label>
+                            <input type="password" id="input-new-password" placeholder="Enter new password" minlength="6">
+                            <div class="btn-row">
+                                <button class="change-pw-btn" onclick="changePassword()">Update Password</button>
+                                <span class="save-msg" id="pw-msg"></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="stats-grid">
@@ -301,10 +494,9 @@
             if (puzzles && puzzles.length > 0) {
                 puzzles.forEach(p => {
                     const categories = deserialize(p.data);
-                    const catNames = categories.map(c => c.category).join(', ');
                     html += `
                         <div class="puzzle-item">
-                            <a href="/?p=${p.id}">${catNames}</a>
+                            <a href="/?p=${p.id}">${getPuzzleTitle(categories, p.id)}</a>
                             <div class="puzzle-item-stats">
                                 &#9829; ${p.vote_count} &middot; ${p.play_count} plays &middot; ${p.completion_pct}% solved
                             </div>

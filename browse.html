@@ -41,6 +41,79 @@
             font-weight: 500;
         }
         .nav-links a:hover { text-decoration: underline; }
+        .help-btn {
+            position: fixed;
+            top: 14px;
+            right: 16px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #000;
+            background: #fff;
+            font-family: Georgia, serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .help-btn:hover { background: #f0f0f0; }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            text-align: left;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+        .modal-overlay.active .modal { transform: scale(1); }
+        .modal h2 { text-align: center; margin-bottom: 16px; font-family: Georgia, serif; }
+        .modal p {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        .modal .color-legend {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 12px 0;
+        }
+        .modal .color-legend span {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+        .modal .btn-close {
+            display: block;
+            margin: 16px auto 0;
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 8px 24px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .modal .btn-close:hover { border-color: #000; }
 
         .tabs {
             display: flex;
@@ -120,6 +193,26 @@
 <body>
     <div class="nav-links">
         <a href="/">Create</a>
+    </div>
+    <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
+
+    <!-- HELP MODAL -->
+    <div class="modal-overlay" id="help-modal" onclick="if(event.target===this)this.classList.remove('active')">
+        <div class="modal">
+            <h2>How to Play</h2>
+            <p>Find groups of four words that share something in common.</p>
+            <p>Select four words and tap <strong>Submit</strong> to check if they form a group. You get 4 mistakes before the game ends.</p>
+            <p>Each puzzle has exactly four groups. The color indicates difficulty:</p>
+            <div class="color-legend">
+                <span style="background:#f9df6d"></span>
+                <span style="background:#a0c35a"></span>
+                <span style="background:#b0c4ef"></span>
+                <span style="background:#ba81c5"></span>
+            </div>
+            <p style="text-align:center; font-size:0.8rem; color:#666;">Easiest → Hardest</p>
+            <p>You can also <strong>create your own puzzle</strong> — pick four groups of four words, and share the link with friends!</p>
+            <button class="btn-close" onclick="document.getElementById('help-modal').classList.remove('active')">Got it</button>
+        </div>
     </div>
 
     <h1>Browse Puzzles</h1>
