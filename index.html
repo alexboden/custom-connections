@@ -238,23 +238,30 @@
         #result { display: none; text-align: center; max-width: 500px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         #result h2 { margin-bottom: 16px; font-family: Georgia, serif; }
         #result .emoji-grid { font-size: 1.8rem; line-height: 2; margin-bottom: 20px; }
-        .vote-btn {
+        .vote-container {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .vote-arrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 14px;
             background: #fff;
             border: 1px solid #ddd;
             border-radius: 20px;
-            padding: 8px 16px;
+            cursor: pointer;
             font-size: 0.9rem;
             font-weight: 500;
-            cursor: pointer;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            transition: all 0.2s;
-            margin-bottom: 16px;
+            transition: all 0.15s;
+            color: #666;
         }
-        .vote-btn:hover { border-color: #000; }
-        .vote-btn.voted { background: #000; color: #fff; border-color: #000; }
+        .vote-arrow:hover { background: #f0f0f0; color: #000; border-color: #999; }
+        .vote-arrow.upvoted { color: #ff4500; background: #fff5f2; border-color: #ff4500; }
+        .vote-arrow.downvoted { color: #7193ff; background: #f0f4ff; border-color: #7193ff; }
         .nav-links {
             position: fixed;
             top: 16px;
@@ -277,7 +284,7 @@
         <a href="/browse.html">Browse</a>
     </div>
     <h1>Four of a Kind</h1>
-    <p class="subtitle"><a href="#" id="create-link" onclick="sessionStorage.removeItem('puzzle'); location.hash=''; location.reload(); return false;" style="color: #6f6f6f; text-decoration: underline;">Create</a> and share your own puzzle</p>
+    <p class="subtitle"><a href="#" id="create-link" onclick="location.hash=''; location.replace(location.pathname); return false;" style="color: #6f6f6f; text-decoration: underline;">Create</a> and share your own puzzle</p>
 
     <!-- CREATOR VIEW -->
     <div id="creator">
@@ -302,13 +309,14 @@
     <div id="result">
         <h2 id="result-title"></h2>
         <div class="emoji-grid" id="emoji-grid"></div>
-        <button class="vote-btn" id="vote-btn" onclick="toggleVote()" style="display:none;">
-            <span id="vote-icon">&#9825;</span> <span id="vote-count">0</span>
-        </button>
+        <div class="vote-container" id="vote-container" style="display:none;">
+            <button class="vote-arrow" id="upvote-btn" onclick="vote(1)">&#9650; <span id="upvote-count">0</span></button>
+            <button class="vote-arrow" id="downvote-btn" onclick="vote(-1)">&#9660; <span id="downvote-count">0</span></button>
+        </div>
         <div class="solved-groups" id="result-solved-groups" style="margin-top: 16px; width: 100%;"></div>
         <div class="controls">
             <button class="btn btn-secondary" onclick="copyResult(this)">Share Result</button>
-            <button class="btn btn-primary" onclick="sessionStorage.removeItem('puzzle'); location.hash=''; location.reload();">Create Your Own</button>
+            <button class="btn btn-primary" onclick="location.hash=''; location.replace(location.pathname);">Create Your Own</button>
         </div>
     </div>
 
@@ -336,7 +344,7 @@
         let mistakesLeft = 4;
         let guessHistory = [];
         let currentPuzzleId = null;
-        let hasVoted = false;
+        let userVote = 0; // -1, 0, or 1
 
         // --- ENCODING (compact + compressed) ---
         // Format: "cat1~w1~w2~w3~w4|cat2~..." → deflate-raw → base64url
@@ -384,8 +392,6 @@
                     gameData = deserialize(data.data);
                     currentPuzzleId = puzzleId;
                     if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
-                    sessionStorage.setItem('puzzle', JSON.stringify(gameData));
-                    sessionStorage.setItem('puzzleId', puzzleId);
                     history.replaceState(null, '', location.pathname);
                     showGame();
                 } catch (e) {
@@ -413,7 +419,6 @@
                         }
                     }
                     if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
-                    sessionStorage.setItem('puzzle', JSON.stringify(gameData));
                     history.replaceState(null, '', location.pathname);
                     showGame();
                 } catch (e) {
@@ -421,10 +426,6 @@
                     location.hash = '';
                     showCreator();
                 }
-            } else if (sessionStorage.getItem('puzzle')) {
-                gameData = JSON.parse(sessionStorage.getItem('puzzle'));
-                currentPuzzleId = sessionStorage.getItem('puzzleId') || null;
-                showGame();
             } else {
                 showCreator();
             }
@@ -769,59 +770,65 @@
 
         // --- VOTING ---
         async function loadVoteState() {
-            const voteBtn = document.getElementById('vote-btn');
-            // Get vote count
-            const { count } = await supabaseClient
-                .from('votes').select('*', { count: 'exact', head: true })
-                .eq('puzzle_id', currentPuzzleId);
-            document.getElementById('vote-count').textContent = count || 0;
-            voteBtn.style.display = 'inline-flex';
+            const container = document.getElementById('vote-container');
+            await refreshVoteCount();
+            container.style.display = 'inline-flex';
 
             // Check if current user has voted
             if (currentUser) {
                 const { data } = await supabaseClient
-                    .from('votes').select()
+                    .from('votes').select('value')
                     .eq('puzzle_id', currentPuzzleId)
                     .eq('user_id', currentUser.id)
                     .maybeSingle();
-                hasVoted = !!data;
+                userVote = data ? data.value : 0;
                 updateVoteUI();
             }
         }
 
-        async function toggleVote() {
-            if (!requireAuth('upvote this puzzle')) return;
+        async function refreshVoteCount() {
+            const { data } = await supabaseClient
+                .from('votes').select('value')
+                .eq('puzzle_id', currentPuzzleId);
+            const upvotes = data ? data.filter(r => r.value === 1).length : 0;
+            const downvotes = data ? data.filter(r => r.value === -1).length : 0;
+            document.getElementById('upvote-count').textContent = upvotes;
+            document.getElementById('downvote-count').textContent = downvotes;
+        }
 
-            if (hasVoted) {
+        async function vote(direction) {
+            if (!requireAuth('vote on this puzzle')) return;
+
+            if (userVote === direction) {
+                // Un-vote: clicking same arrow removes vote
                 await supabaseClient.from('votes').delete()
                     .eq('puzzle_id', currentPuzzleId)
                     .eq('user_id', currentUser.id);
-                hasVoted = false;
-            } else {
+                userVote = 0;
+            } else if (userVote === 0) {
+                // New vote
                 await supabaseClient.from('votes').insert({
                     puzzle_id: currentPuzzleId,
-                    user_id: currentUser.id
+                    user_id: currentUser.id,
+                    value: direction
                 });
-                hasVoted = true;
+                userVote = direction;
+            } else {
+                // Switch vote direction
+                await supabaseClient.from('votes').update({ value: direction })
+                    .eq('puzzle_id', currentPuzzleId)
+                    .eq('user_id', currentUser.id);
+                userVote = direction;
             }
             updateVoteUI();
-            // Refresh count
-            const { count } = await supabaseClient
-                .from('votes').select('*', { count: 'exact', head: true })
-                .eq('puzzle_id', currentPuzzleId);
-            document.getElementById('vote-count').textContent = count || 0;
+            await refreshVoteCount();
         }
 
         function updateVoteUI() {
-            const btn = document.getElementById('vote-btn');
-            const icon = document.getElementById('vote-icon');
-            if (hasVoted) {
-                btn.classList.add('voted');
-                icon.innerHTML = '&#9829;';
-            } else {
-                btn.classList.remove('voted');
-                icon.innerHTML = '&#9825;';
-            }
+            const upBtn = document.getElementById('upvote-btn');
+            const downBtn = document.getElementById('downvote-btn');
+            upBtn.classList.toggle('upvoted', userVote === 1);
+            downBtn.classList.toggle('downvoted', userVote === -1);
         }
 
         window.addEventListener('load', () => {
