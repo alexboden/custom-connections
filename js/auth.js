@@ -215,10 +215,7 @@ async function handleAuthSubmit(e) {
       btn.disabled = false;
       btn.textContent = 'Create account';
     } else {
-      errorEl.style.color = '#1b5e20';
-      errorEl.textContent = 'Check your email to confirm your account!';
-      btn.disabled = false;
-      btn.textContent = 'Create account';
+      closeAuthModal();
     }
   }
 }

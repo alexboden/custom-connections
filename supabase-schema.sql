@@ -49,6 +49,7 @@ CREATE POLICY "Users can update their own profile"
 CREATE TABLE IF NOT EXISTS puzzles (
   id text PRIMARY KEY,
   data text NOT NULL,
+  name text,
   creator_id uuid REFERENCES auth.users(id),
   play_count int DEFAULT 0,
   completion_count int DEFAULT 0,
@@ -89,6 +90,7 @@ CREATE OR REPLACE VIEW puzzle_stats AS
 SELECT
   p.id,
   p.data,
+  p.name,
   p.creator_id,
   p.play_count,
   p.completion_count,

@@ -326,11 +326,15 @@
         <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
     </div>
     <h1>Four of a Kind</h1>
-    <p class="subtitle"><a href="#" id="create-link" onclick="location.hash=''; location.replace(location.pathname); return false;" style="color: #6f6f6f; text-decoration: underline;">Create</a> and share your own puzzle</p>
+    <p class="subtitle">Create and share your own puzzle</p>
 
     <!-- CREATOR VIEW -->
     <div id="creator">
         <div id="group-inputs"></div>
+        <div id="name-picker" style="display:none; margin-bottom: 20px; padding: 20px; border-radius: 12px; background: #f0f0f0;">
+            <label style="display:block; font-weight:700; margin-bottom:12px; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Puzzle Name (pick a word)</label>
+            <div id="name-options" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
         <button class="btn btn-submit" onclick="generateLink()">Create Puzzle</button>
     </div>
 
@@ -519,6 +523,8 @@
             renderGroupInputs();
         }
 
+        let selectedName = null;
+
         function renderGroupInputs() {
             const container = document.getElementById('group-inputs');
             container.innerHTML = COLORS.map((color, i) => `
@@ -526,13 +532,47 @@
                     <label>Group ${i + 1} (${color})</label>
                     <input class="cat-input" type="text" placeholder="Category name" id="cat-${i}">
                     <div class="word-boxes">
-                        <input type="text" placeholder="Word 1" id="word-${i}-0">
-                        <input type="text" placeholder="Word 2" id="word-${i}-1">
-                        <input type="text" placeholder="Word 3" id="word-${i}-2">
-                        <input type="text" placeholder="Word 4" id="word-${i}-3">
+                        <input type="text" placeholder="Word 1" id="word-${i}-0" oninput="updateNamePicker()">
+                        <input type="text" placeholder="Word 2" id="word-${i}-1" oninput="updateNamePicker()">
+                        <input type="text" placeholder="Word 3" id="word-${i}-2" oninput="updateNamePicker()">
+                        <input type="text" placeholder="Word 4" id="word-${i}-3" oninput="updateNamePicker()">
                     </div>
                 </div>
             `).join('');
+        }
+
+        function updateNamePicker() {
+            const words = [];
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const w = document.getElementById(`word-${i}-${j}`).value.trim();
+                    if (w) words.push(w);
+                }
+            }
+            const picker = document.getElementById('name-picker');
+            const options = document.getElementById('name-options');
+            if (words.length === 0) {
+                picker.style.display = 'none';
+                return;
+            }
+            picker.style.display = 'block';
+            // If selectedName is no longer in the word list, clear it
+            if (selectedName && !words.some(w => w.toLowerCase() === selectedName.toLowerCase())) {
+                selectedName = null;
+            }
+            options.innerHTML = words.map(w => {
+                const isSelected = selectedName && w.toLowerCase() === selectedName.toLowerCase();
+                return `<button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'}" style="padding:8px 14px; font-size:0.85rem;" onclick="pickName('${w.replace(/'/g, "\\'")}')">${w}</button>`;
+            }).join('');
+        }
+
+        function pickName(word) {
+            if (selectedName && selectedName.toLowerCase() === word.toLowerCase()) {
+                selectedName = null;
+            } else {
+                selectedName = word;
+            }
+            updateNamePicker();
         }
 
         async function generateLink() {
@@ -572,11 +612,13 @@
             if (currentUser) {
                 // Store in database
                 const id = nanoid();
-                const { error } = await supabaseClient.from('puzzles').insert({
+                const insertData = {
                     id,
                     data: serialized,
                     creator_id: currentUser.id
-                });
+                };
+                if (selectedName) insertData.name = selectedName;
+                const { error } = await supabaseClient.from('puzzles').insert(insertData);
                 if (error) {
                     showCreatorError('Failed to save puzzle. Please try again.');
                     return;
