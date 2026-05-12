@@ -446,14 +446,22 @@
         async function init() {
             await initAuth();
 
-            // Check for ?p= query param (DB-backed puzzle)
+            // Check for puzzle ID in URL path (/p/<id>) or query param (?p=<id>)
+            const pathMatch = location.pathname.match(/^\/p\/([^/]+)/);
             const params = new URLSearchParams(location.search);
-            const puzzleId = params.get('p');
+            const puzzleId = pathMatch ? pathMatch[1] : params.get('p');
             if (puzzleId) {
                 try {
                     const { data, error } = await supabaseClient
-                        .from('puzzles').select('data').eq('id', puzzleId).single();
+                        .from('puzzles').select('data, creator_id').eq('id', puzzleId).single();
                     if (error || !data) throw new Error('Puzzle not found');
+
+                    let creatorName = null;
+                    if (data.creator_id) {
+                        const { data: profile } = await supabaseClient
+                            .from('profiles').select('username, display_name').eq('id', data.creator_id).single();
+                        creatorName = profile?.username || profile?.display_name || null;
+                    }
 
                     // Check if user already played this puzzle
                     if (currentUser) {
@@ -467,7 +475,7 @@
                         if (existingPlay) {
                             gameData = deserialize(data.data);
                             currentPuzzleId = puzzleId;
-                            history.replaceState(null, '', location.pathname);
+                            showCreatorInfo(creatorName);
                             showAlreadyPlayed(existingPlay);
                             return;
                         }
@@ -476,7 +484,7 @@
                     gameData = deserialize(data.data);
                     currentPuzzleId = puzzleId;
                     if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
-                    history.replaceState(null, '', location.pathname);
+                    showCreatorInfo(creatorName);
                     showGame();
                 } catch (e) {
                     alert('Puzzle not found!');
@@ -512,6 +520,15 @@
                 }
             } else {
                 showCreator();
+            }
+        }
+
+        function showCreatorInfo(name) {
+            const subtitle = document.querySelector('.subtitle');
+            if (name) {
+                subtitle.innerHTML = 'Created by <strong>' + name + '</strong>';
+            } else {
+                subtitle.innerHTML = '';
             }
         }
 
@@ -623,7 +640,7 @@
                     showCreatorError('Failed to save puzzle. Please try again.');
                     return;
                 }
-                url = location.origin + location.pathname + '?p=' + id;
+                url = location.origin + '/p/' + id;
                 currentPuzzleId = id;
             } else {
                 // Fallback to hash link for anonymous users

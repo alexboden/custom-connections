@@ -338,7 +338,7 @@
                 const username = puzzle._username;
                 const card = document.createElement('a');
                 card.className = 'puzzle-card';
-                card.href = '/create.html?p=' + puzzle.id;
+                card.href = '/p/' + puzzle.id;
                 const solvedBadge = userPlays.has(puzzle.id) ? '<span class="puzzle-solved">Solved</span>' : '';
                 card.innerHTML = `
                     <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id, puzzle.name)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}${solvedBadge}</div>
@@ -393,7 +393,7 @@
                 return;
             }
             const random = data[Math.floor(Math.random() * data.length)];
-            window.location.href = '/create.html?p=' + random.id;
+            window.location.href = '/p/' + random.id;
         }
 
         window.addEventListener('load', async () => {
