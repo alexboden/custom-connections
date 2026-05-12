@@ -259,6 +259,7 @@
 <body>
     <div class="nav-links">
         <a href="/">Browse</a>
+        <a href="/create.html">Create</a>
         <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
     </div>
     <h1>Four of a Kind</h1>
@@ -287,7 +288,8 @@
         </div>
         <div class="solved-groups" id="result-solved-groups" style="margin-top: 16px; width: 100%;"></div>
         <div class="controls">
-            <button class="btn btn-secondary" onclick="copyResult(this)">Share Result</button>
+            <button class="btn btn-secondary" id="share-result-btn" onclick="copyResult(this)">Share Result</button>
+            <button class="btn btn-secondary" id="share-puzzle-btn" onclick="copyPuzzleLink(this)" style="display:none;">Share Puzzle</button>
             <button class="btn btn-primary" onclick="window.location.href='/create.html'">Create Your Own</button>
         </div>
     </div>
@@ -438,6 +440,10 @@
                 ? 'You already solved this puzzle!'
                 : 'You already played this puzzle.';
             document.getElementById('emoji-grid').innerHTML = '';
+            // Hide Share Result since we don't have guess history for already-played puzzles
+            document.getElementById('share-result-btn').style.display = 'none';
+            // Show Share Puzzle button
+            if (currentPuzzleId) document.getElementById('share-puzzle-btn').style.display = '';
             const container = document.getElementById('result-solved-groups');
             container.innerHTML = gameData.groups.map(g => `
                 <div class="solved-group bg-${g.color}">
@@ -618,6 +624,7 @@
                 renderResultGroups();
 
                 if (currentPuzzleId) {
+                    document.getElementById('share-puzzle-btn').style.display = '';
                     await loadVoteState();
                 }
             }, 800);
@@ -666,6 +673,14 @@
             navigator.clipboard.writeText(text).then(() => {
                 btn.textContent = 'Copied!';
                 setTimeout(() => btn.textContent = 'Share Result', 2000);
+            });
+        }
+
+        function copyPuzzleLink(btn) {
+            const url = window.location.origin + '/play.html?p=' + currentPuzzleId;
+            navigator.clipboard.writeText(url).then(() => {
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Share Puzzle', 2000);
             });
         }
 
