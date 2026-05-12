@@ -234,7 +234,12 @@
         <button class="tab" data-sort="created_at">Newest</button>
     </div>
 
-    <button onclick="playRandom()" style="display:block;margin:1rem auto;padding:8px 16px;font-size:0.85rem;font-weight:500;background:#000;color:#fff;border:1px solid #000;border-radius:20px;cursor:pointer;">&#9654; Random</button>
+    <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-bottom:16px;">
+        <label style="font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="filter-unsolved" onchange="toggleUnsolvedFilter()"> Unsolved only
+        </label>
+        <button onclick="playRandom()" style="padding:8px 16px;font-size:0.85rem;font-weight:500;background:#000;color:#fff;border:1px solid #000;border-radius:20px;cursor:pointer;">&#9654; Random</button>
+    </div>
 
     <div class="puzzle-grid" id="puzzle-grid">
         <div class="loading">Loading puzzles...</div>
@@ -248,6 +253,7 @@
     <script>
         const COLORS = ['yellow', 'green', 'blue', 'purple'];
         let currentSort = 'vote_count';
+        let filterUnsolved = false;
         let page = 0;
         const PAGE_SIZE = 20;
         let allLoaded = false;
@@ -318,8 +324,17 @@
                 document.getElementById('puzzle-grid').innerHTML = '';
             }
 
-            if (data.length === 0 && page === 0) {
-                document.getElementById('puzzle-grid').innerHTML = '<div class="empty">No puzzles yet. <a href="/create.html">Create the first one!</a></div>';
+            // Client-side filter for unsolved
+            let filtered = data;
+            if (filterUnsolved) {
+                filtered = data.filter(p => !userPlays.has(p.id));
+            }
+
+            if (filtered.length === 0 && page === 0) {
+                const msg = filterUnsolved
+                    ? 'No unsolved puzzles found. Try unchecking the filter!'
+                    : 'No puzzles yet. <a href="/create.html">Create the first one!</a>';
+                document.getElementById('puzzle-grid').innerHTML = `<div class="empty">${msg}</div>`;
                 document.getElementById('load-more').style.display = 'none';
                 return;
             }
@@ -332,7 +347,7 @@
             }
 
             const grid = document.getElementById('puzzle-grid');
-            data.forEach(puzzle => {
+            filtered.forEach(puzzle => {
                 const categories = deserialize(puzzle.data);
                 const date = new Date(puzzle.created_at).toLocaleDateString();
                 const username = puzzle._username;
@@ -357,6 +372,11 @@
 
         function loadMore() {
             if (!allLoaded) loadPuzzles(false);
+        }
+
+        function toggleUnsolvedFilter() {
+            filterUnsolved = document.getElementById('filter-unsolved').checked;
+            loadPuzzles(true);
         }
 
         // Tab switching
