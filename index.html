@@ -278,22 +278,21 @@
         }
         .nav-links a:hover { text-decoration: underline; }
         .help-btn {
-            position: fixed;
-            top: 14px;
-            right: 16px;
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             border: 2px solid #000;
             background: #fff;
             font-family: Georgia, serif;
-            font-size: 1rem;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
-            z-index: 50;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
+            vertical-align: middle;
+            padding: 0;
+            line-height: 1;
         }
         .help-btn:hover { background: #f0f0f0; }
         #help-modal .modal {
@@ -324,8 +323,8 @@
 <body>
     <div class="nav-links">
         <a href="/browse.html">Browse</a>
+        <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
     </div>
-    <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
     <h1>Four of a Kind</h1>
     <p class="subtitle"><a href="#" id="create-link" onclick="location.hash=''; location.replace(location.pathname); return false;" style="color: #6f6f6f; text-decoration: underline;">Create</a> and share your own puzzle</p>
 

@@ -42,22 +42,21 @@
         }
         .nav-links a:hover { text-decoration: underline; }
         .help-btn {
-            position: fixed;
-            top: 14px;
-            right: 16px;
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             border: 2px solid #000;
             background: #fff;
             font-family: Georgia, serif;
-            font-size: 1rem;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
-            z-index: 50;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
+            vertical-align: middle;
+            padding: 0;
+            line-height: 1;
         }
         .help-btn:hover { background: #f0f0f0; }
         .modal-overlay {
@@ -193,8 +192,8 @@
 <body>
     <div class="nav-links">
         <a href="/">Create</a>
+        <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
     </div>
-    <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
 
     <!-- HELP MODAL -->
     <div class="modal-overlay" id="help-modal" onclick="if(event.target===this)this.classList.remove('active')">
