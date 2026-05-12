@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Four of a Kind</title>
+
+    <!-- Open Graph / Link Preview -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Four of a Kind">
+    <meta property="og:description" content="Can you find the four groups? A Four of a Kind puzzle awaits.">
+    <meta property="og:url" content="https://connections.alexboden.ca/">
+    <meta property="og:image" content="https://connections.alexboden.ca/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Four of a Kind">
+    <meta name="twitter:description" content="Can you find the four groups? A Four of a Kind puzzle awaits.">
+    <meta name="twitter:image" content="https://connections.alexboden.ca/og-image.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'NY Times Karnak', Georgia, serif;
+            background: #fff;
+            color: #000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 52px 20px 32px;
+        }
+        h1 { font-size: 2rem; margin-bottom: 4px; font-weight: 700; }
+        .subtitle { color: #6f6f6f; margin-bottom: 32px; font-size: 0.95rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            transition: opacity 0.2s ease, transform 0.15s ease;
+        }
+        .btn:hover { opacity: 0.8; transform: scale(0.98); }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary { background: #000; color: #fff; }
+        .btn-secondary { background: #fff; color: #000; border: 1px solid #ddd; }
+
+        /* Game */
+        #game { width: 100%; max-width: 500px; }
+        .solved-groups { margin-bottom: 8px; }
+        .solved-group {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            text-align: center;
+            animation: reveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        @keyframes reveal {
+            from { transform: scaleY(0.6) translateY(-8px); opacity: 0; }
+            to { transform: scaleY(1) translateY(0); opacity: 1; }
+        }
+        .solved-group .group-name { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
+        .solved-group .group-words { font-size: 0.9rem; margin-top: 4px; }
+        .bg-yellow { background: #f9df6d; }
+        .bg-green { background: #a0c35a; }
+        .bg-blue { background: #b0c4ef; }
+        .bg-purple { background: #ba81c5; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .tile {
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px 6px;
+            border-radius: 8px;
+            background: #efefe6;
+            font-weight: 700;
+            font-size: clamp(0.6rem, 2.5vw, 0.85rem);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            line-height: 1.2;
+            text-transform: uppercase;
+        }
+        .tile:hover { background: #e2e2d8; transform: scale(1.02); }
+        .tile:active { transform: scale(0.96); }
+        .tile.selected { background: #5a594e; color: #fff; transform: scale(0.95); }
+        .tile.wrong { animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(5px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(2px); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .mistakes {
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .mistakes .dot {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: #5a594e;
+            margin: 0 3px;
+            transition: background 0.4s ease, transform 0.3s ease;
+        }
+        .mistakes .dot.used { background: #ddd; transform: scale(0.8); }
+
+        .message {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .message.error { background: #fdecea; color: #611a15; }
+        .message.success { background: #e8f5e9; color: #1b5e20; }
+        .message.info { background: #e3f2fd; color: #0d47a1; }
+
+        /* Result */
+        #result { display: none; text-align: center; max-width: 500px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        #result h2 { margin-bottom: 16px; font-family: Georgia, serif; }
+        #result .emoji-grid { font-size: 1.8rem; line-height: 2; margin-bottom: 20px; }
+        .vote-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .vote-arrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 14px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.15s;
+            color: #666;
+        }
+        .vote-arrow:hover { background: #f0f0f0; color: #000; border-color: #999; }
+        .vote-arrow.upvoted { color: #ff4500; background: #fff5f2; border-color: #ff4500; }
+        .vote-arrow.downvoted { color: #7193ff; background: #f0f4ff; border-color: #7193ff; }
+        .nav-links {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 14px 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.85rem;
+            z-index: 50;
+            background: #fff;
+        }
+        .nav-links a {
+            color: #000;
+            text-decoration: none;
+            margin-right: 16px;
+            font-weight: 500;
+        }
+        .nav-links a:hover { text-decoration: underline; }
+        .help-btn {
+            width: 18px;
+            height: 18px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            padding: 0;
+            opacity: 0.5;
+        }
+        .help-btn:hover { opacity: 1; }
+        .help-btn svg { width: 18px; height: 18px; }
+        #help-modal .modal {
+            max-width: 400px;
+            text-align: left;
+        }
+        #help-modal .modal h2 { text-align: center; }
+        #help-modal .modal p {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        #help-modal .modal .color-legend {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 12px 0;
+        }
+        #help-modal .modal .color-legend span {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+        .modal-overlay {
+            display: flex;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px;
+            max-width: 480px;
+            width: 90%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.active .modal { transform: scale(1) translateY(0); }
+        .modal h2 { margin-bottom: 16px; font-family: Georgia, serif; }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="/">Browse</a>
+        <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+    </div>
+    <h1>Four of a Kind</h1>
+    <p class="subtitle" id="subtitle"></p>
+
+    <!-- GAME VIEW -->
+    <div id="game">
+        <div class="message info" id="game-message" style="display:none;"></div>
+        <div class="solved-groups" id="solved-groups"></div>
+        <div class="grid" id="grid"></div>
+        <div class="mistakes" id="mistakes"></div>
+        <div class="controls">
+            <button class="btn btn-secondary" onclick="deselectAll()">Deselect All</button>
+            <button class="btn btn-secondary" onclick="shuffleTiles()">Shuffle</button>
+            <button class="btn btn-primary" id="submit-btn" onclick="submitGuess()">Submit</button>
+        </div>
+    </div>
+
+    <!-- RESULT VIEW -->
+    <div id="result">
+        <h2 id="result-title"></h2>
+        <div class="emoji-grid" id="emoji-grid"></div>
+        <div class="vote-container" id="vote-container" style="display:none;">
+            <button class="vote-arrow" id="upvote-btn" onclick="vote(1)">&#9650; <span id="upvote-count">0</span></button>
+            <button class="vote-arrow" id="downvote-btn" onclick="vote(-1)">&#9660; <span id="downvote-count">0</span></button>
+        </div>
+        <div class="solved-groups" id="result-solved-groups" style="margin-top: 16px; width: 100%;"></div>
+        <div class="controls">
+            <button class="btn btn-secondary" onclick="copyResult(this)">Share Result</button>
+            <button class="btn btn-primary" onclick="window.location.href='/create.html'">Create Your Own</button>
+        </div>
+    </div>
+
+    <!-- HELP MODAL -->
+    <div class="modal-overlay" id="help-modal" onclick="if(event.target===this)this.classList.remove('active')">
+        <div class="modal">
+            <h2>How to Play</h2>
+            <p>Find groups of four words that share something in common.</p>
+            <p>Select four words and tap <strong>Submit</strong> to check if they form a group. You get 4 mistakes before the game ends.</p>
+            <p>Each puzzle has exactly four groups. The color indicates difficulty:</p>
+            <div class="color-legend">
+                <span style="background:#f9df6d"></span>
+                <span style="background:#a0c35a"></span>
+                <span style="background:#b0c4ef"></span>
+                <span style="background:#ba81c5"></span>
+            </div>
+            <p style="text-align:center; font-size:0.8rem; color:#666;">Easiest → Hardest</p>
+            <p>You can also <strong>create your own puzzle</strong> — pick four groups of four words, and share the link with friends!</p>
+            <button class="btn btn-secondary" style="display:block; margin:16px auto 0;" onclick="document.getElementById('help-modal').classList.remove('active')">Got it</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/supabase-config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        const COLORS = ['yellow', 'green', 'blue', 'purple'];
+        const EMOJIS = { yellow: '\u{1F7E8}', green: '\u{1F7E9}', blue: '\u{1F7E6}', purple: '\u{1F7EA}' };
+
+        let gameData = null;
+        let selected = [];
+        let solved = [];
+        let mistakesLeft = 4;
+        let guessHistory = [];
+        let currentPuzzleId = null;
+        let userVote = 0;
+
+        function deserialize(str) {
+            return { groups: str.split('|').map((part, i) => {
+                const [category, ...words] = part.split('~');
+                return { category, words, color: COLORS[i] };
+            })};
+        }
+
+        async function decompress(b64url) {
+            let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4) b64 += '=';
+            const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+            const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+            return await new Response(stream).text();
+        }
+
+        // --- INIT ---
+        async function init() {
+            await initAuth();
+
+            // Check for puzzle ID in URL path (/p/<id>) or query param (?p=<id>)
+            const pathMatch = location.pathname.match(/^\/p\/([^/]+)/);
+            const params = new URLSearchParams(location.search);
+            const puzzleId = pathMatch ? pathMatch[1] : params.get('p');
+
+            if (puzzleId) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('puzzles').select('data, creator_id').eq('id', puzzleId).single();
+                    if (error || !data) throw new Error('Puzzle not found');
+
+                    let creatorName = null;
+                    if (data.creator_id) {
+                        const { data: profile } = await supabaseClient
+                            .from('profiles').select('username, display_name').eq('id', data.creator_id).single();
+                        creatorName = profile?.username || profile?.display_name || null;
+                    }
+
+                    // Check if user already played this puzzle
+                    if (currentUser) {
+                        const { data: existingPlay } = await supabaseClient
+                            .from('plays')
+                            .select('id, won, mistakes')
+                            .eq('puzzle_id', puzzleId)
+                            .eq('user_id', currentUser.id)
+                            .limit(1)
+                            .single();
+                        if (existingPlay) {
+                            gameData = deserialize(data.data);
+                            currentPuzzleId = puzzleId;
+                            showCreatorInfo(creatorName);
+                            showAlreadyPlayed(existingPlay);
+                            return;
+                        }
+                    }
+
+                    gameData = deserialize(data.data);
+                    currentPuzzleId = puzzleId;
+                    if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
+                    showCreatorInfo(creatorName);
+                    showGame();
+                } catch (e) {
+                    alert('Puzzle not found!');
+                    window.location.href = '/';
+                }
+                return;
+            }
+
+            // Legacy: check hash
+            const hash = location.hash.slice(1);
+            if (hash) {
+                try {
+                    const decoded = decodeURIComponent(hash);
+                    try {
+                        const str = await decompress(decoded);
+                        gameData = deserialize(str);
+                    } catch (_) {
+                        try {
+                            const str = decodeURIComponent(escape(atob(decoded)));
+                            gameData = deserialize(str);
+                        } catch (__) {
+                            const json = atob(decoded);
+                            gameData = JSON.parse(json);
+                        }
+                    }
+                    if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
+                    history.replaceState(null, '', location.pathname);
+                    showGame();
+                } catch (e) {
+                    alert('Invalid puzzle link!');
+                    window.location.href = '/';
+                }
+            } else {
+                // No puzzle specified, redirect to browse
+                window.location.href = '/';
+            }
+        }
+
+        function showCreatorInfo(name) {
+            const subtitle = document.getElementById('subtitle');
+            if (name) {
+                subtitle.innerHTML = 'Created by <strong>' + name + '</strong>';
+            }
+        }
+
+        // --- GAME ---
+        function showAlreadyPlayed(play) {
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('result-title').textContent = play.won
+                ? 'You already solved this puzzle!'
+                : 'You already played this puzzle.';
+            document.getElementById('emoji-grid').innerHTML = '';
+            const container = document.getElementById('result-solved-groups');
+            container.innerHTML = gameData.groups.map(g => `
+                <div class="solved-group bg-${g.color}">
+                    <div class="group-name">${g.category}</div>
+                    <div class="group-words">${g.words.join(', ')}</div>
+                </div>
+            `).join('');
+            if (currentPuzzleId) loadVoteState();
+        }
+
+        function showGame() {
+            document.getElementById('game').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            selected = [];
+            solved = [];
+            mistakesLeft = 4;
+            guessHistory = [];
+            renderMistakes();
+            renderGrid();
+        }
+
+        function getAllWords() {
+            const words = [];
+            gameData.groups.forEach(g => {
+                g.words.forEach(w => words.push({ word: w, color: g.color, category: g.category }));
+            });
+            return words;
+        }
+
+        function getRemaining() {
+            const solvedWords = new Set(solved.flatMap(g => g.words));
+            return getAllWords().filter(w => !solvedWords.has(w.word));
+        }
+
+        function renderGrid() {
+            const remaining = getRemaining();
+            for (let i = remaining.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+            }
+            const grid = document.getElementById('grid');
+            grid.innerHTML = remaining.map(item => `
+                <div class="tile" data-word="${item.word}" onclick="toggleTile(this)">
+                    ${item.word}
+                </div>
+            `).join('');
+        }
+
+        function shuffleTiles() {
+            const grid = document.getElementById('grid');
+            const tiles = [...grid.children];
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                grid.appendChild(tiles[j]);
+                tiles.splice(j, 1, tiles[i]);
+            }
+        }
+
+        function toggleTile(el) {
+            const word = el.dataset.word;
+            if (el.classList.contains('selected')) {
+                el.classList.remove('selected');
+                selected = selected.filter(w => w !== word);
+            } else {
+                if (selected.length >= 4) return;
+                el.classList.add('selected');
+                selected.push(word);
+            }
+            document.getElementById('submit-btn').style.opacity = selected.length === 4 ? '1' : '0.5';
+        }
+
+        function deselectAll() {
+            selected = [];
+            document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
+            document.getElementById('submit-btn').style.opacity = '0.5';
+        }
+
+        function submitGuess() {
+            if (selected.length !== 4) return;
+            const sortedSelection = [...selected].sort();
+            const alreadyGuessed = guessHistory.some(g =>
+                [...g.words].sort().every((w, i) => w === sortedSelection[i])
+            );
+            if (alreadyGuessed) {
+                showMessage('Already guessed!', 'error');
+                return;
+            }
+            const match = gameData.groups.find(g =>
+                g.words.every(w => selected.includes(w)) && g.words.length === selected.length
+            );
+            if (match) {
+                solved.push(match);
+                guessHistory.push({ words: [...selected], color: match.color, correct: true });
+                selected = [];
+                renderSolved();
+                renderGrid();
+                document.getElementById('submit-btn').style.opacity = '0.5';
+                hideMessage();
+                if (solved.length === 4) endGame(true);
+            } else {
+                const oneAway = gameData.groups.some(g => {
+                    const overlap = g.words.filter(w => selected.includes(w));
+                    return overlap.length === 3;
+                });
+                guessHistory.push({ words: [...selected], correct: false });
+                mistakesLeft--;
+                renderMistakes();
+                if (oneAway) showMessage('One away!', 'error');
+                else showMessage('Incorrect', 'error');
+
+                document.querySelectorAll('.tile.selected').forEach(t => {
+                    t.classList.add('wrong');
+                    setTimeout(() => t.classList.remove('wrong'), 400);
+                });
+                deselectAll();
+                if (mistakesLeft === 0) endGame(false);
+            }
+        }
+
+        function renderSolved() {
+            const container = document.getElementById('solved-groups');
+            container.innerHTML = solved.map(g => `
+                <div class="solved-group bg-${g.color}">
+                    <div class="group-name">${g.category}</div>
+                    <div class="group-words">${g.words.join(', ')}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderMistakes() {
+            const container = document.getElementById('mistakes');
+            let html = 'Mistakes remaining: ';
+            for (let i = 0; i < 4; i++) {
+                html += `<span class="dot ${i >= mistakesLeft ? 'used' : ''}"></span>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function showMessage(text, type) {
+            const el = document.getElementById('game-message');
+            el.textContent = text;
+            el.className = `message ${type}`;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 2000);
+        }
+
+        function hideMessage() {
+            document.getElementById('game-message').style.display = 'none';
+        }
+
+        async function endGame(won) {
+            if (!won) {
+                gameData.groups.forEach(g => {
+                    if (!solved.find(s => s.category === g.category)) {
+                        solved.push(g);
+                        guessHistory.push({ words: g.words, color: g.color, correct: true, revealed: true });
+                    }
+                });
+                renderSolved();
+            }
+            document.getElementById('grid').innerHTML = '';
+            document.querySelector('.controls').style.display = 'none';
+            document.getElementById('mistakes').style.display = 'none';
+
+            if (currentPuzzleId) {
+                await supabaseClient.rpc('record_play', {
+                    p_puzzle_id: currentPuzzleId,
+                    p_won: won,
+                    p_mistakes: 4 - mistakesLeft
+                });
+            }
+
+            setTimeout(async () => {
+                document.getElementById('game').style.display = 'none';
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('result-title').textContent = won ? 'Congratulations!' : 'Better luck next time!';
+                renderEmojiGrid();
+                renderResultGroups();
+
+                if (currentPuzzleId) {
+                    await loadVoteState();
+                }
+            }, 800);
+        }
+
+        function renderEmojiGrid() {
+            const lines = guessHistory
+                .filter(g => !g.revealed)
+                .map(guess => {
+                    if (guess.correct) {
+                        return EMOJIS[guess.color].repeat(4);
+                    } else {
+                        return guess.words.map(w => {
+                            const item = getAllWords().find(i => i.word === w);
+                            return EMOJIS[item.color];
+                        }).join('');
+                    }
+                });
+            document.getElementById('emoji-grid').innerHTML = lines.join('<br>');
+        }
+
+        function renderResultGroups() {
+            const container = document.getElementById('result-solved-groups');
+            container.innerHTML = gameData.groups.map(g => `
+                <div class="solved-group bg-${g.color}">
+                    <div class="group-name">${g.category}</div>
+                    <div class="group-words">${g.words.join(', ')}</div>
+                </div>
+            `).join('');
+        }
+
+        function copyResult(btn) {
+            const lines = guessHistory
+                .filter(g => !g.revealed)
+                .map(guess => {
+                    if (guess.correct) {
+                        return EMOJIS[guess.color].repeat(4);
+                    } else {
+                        return guess.words.map(w => {
+                            const item = getAllWords().find(i => i.word === w);
+                            return EMOJIS[item.color];
+                        }).join('');
+                    }
+                });
+            const text = 'Four of a Kind\n' + lines.join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Share Result', 2000);
+            });
+        }
+
+        // --- VOTING ---
+        async function loadVoteState() {
+            const container = document.getElementById('vote-container');
+            await refreshVoteCount();
+            container.style.display = 'inline-flex';
+
+            if (currentUser) {
+                const { data } = await supabaseClient
+                    .from('votes').select('value')
+                    .eq('puzzle_id', currentPuzzleId)
+                    .eq('user_id', currentUser.id)
+                    .maybeSingle();
+                userVote = data ? data.value : 0;
+                updateVoteUI();
+            }
+        }
+
+        async function refreshVoteCount() {
+            const { data } = await supabaseClient
+                .from('votes').select('value')
+                .eq('puzzle_id', currentPuzzleId);
+            const upvotes = data ? data.filter(r => r.value === 1).length : 0;
+            const downvotes = data ? data.filter(r => r.value === -1).length : 0;
+            document.getElementById('upvote-count').textContent = upvotes;
+            document.getElementById('downvote-count').textContent = downvotes;
+        }
+
+        async function vote(direction) {
+            if (!requireAuth('vote on this puzzle')) return;
+
+            if (userVote === direction) {
+                await supabaseClient.from('votes').delete()
+                    .eq('puzzle_id', currentPuzzleId)
+                    .eq('user_id', currentUser.id);
+                userVote = 0;
+            } else if (userVote === 0) {
+                await supabaseClient.from('votes').insert({
+                    puzzle_id: currentPuzzleId,
+                    user_id: currentUser.id,
+                    value: direction
+                });
+                userVote = direction;
+            } else {
+                await supabaseClient.from('votes').update({ value: direction })
+                    .eq('puzzle_id', currentPuzzleId)
+                    .eq('user_id', currentUser.id);
+                userVote = direction;
+            }
+            updateVoteUI();
+            await refreshVoteCount();
+        }
+
+        function updateVoteUI() {
+            const upBtn = document.getElementById('upvote-btn');
+            const downBtn = document.getElementById('downvote-btn');
+            upBtn.classList.toggle('upvoted', userVote === 1);
+            downBtn.classList.toggle('downvoted', userVote === -1);
+        }
+
+        window.addEventListener('load', () => {
+            init();
+        });
+    </script>
+</body>
+</html>
