@@ -8,13 +8,17 @@ async function initAuth() {
   currentUser = session?.user || null;
   renderAuthUI();
   injectAuthModal();
+  if (currentUser) checkUsernameRequired();
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user || null;
     renderAuthUI();
-    if (currentUser && authResolve) {
-      authResolve(true);
-      authResolve = null;
+    if (currentUser) {
+      checkUsernameRequired();
+      if (authResolve) {
+        authResolve(true);
+        authResolve = null;
+      }
     }
   });
 }
@@ -40,11 +44,29 @@ function injectAuthModal() {
       <button class="auth-close" onclick="closeAuthModal()">&times;</button>
     </div>
   `;
+
+  // Username selection panel (shown after sign-in if no username set)
+  const usernameModal = document.createElement('div');
+  usernameModal.id = 'username-modal';
+  usernameModal.innerHTML = `
+    <div class="auth-backdrop"></div>
+    <div class="auth-panel">
+      <h2>Choose a username</h2>
+      <p class="auth-subtitle">Pick a unique username for your profile</p>
+      <form id="username-form" onsubmit="handleUsernameSubmit(event)">
+        <input type="text" id="username-input" placeholder="Username" required minlength="3" maxlength="24" pattern="[a-zA-Z0-9_-]+" autocomplete="username">
+        <p class="username-hint">Letters, numbers, hyphens, and underscores only</p>
+        <div id="username-error" class="auth-error"></div>
+        <button type="submit" class="auth-submit" id="username-submit-btn">Continue</button>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(usernameModal);
   document.body.appendChild(modal);
 
   const style = document.createElement('style');
   style.textContent = `
-    #auth-modal {
+    #auth-modal, #username-modal {
       display: none;
       position: fixed;
       inset: 0;
@@ -52,7 +74,7 @@ function injectAuthModal() {
       align-items: center;
       justify-content: center;
     }
-    #auth-modal.active { display: flex; }
+    #auth-modal.active, #username-modal.active { display: flex; }
     .auth-backdrop {
       position: absolute;
       inset: 0;
@@ -84,7 +106,7 @@ function injectAuthModal() {
       font-size: 0.85rem;
       margin-bottom: 20px;
     }
-    #auth-form input {
+    #auth-form input, #username-form input {
       width: 100%;
       padding: 12px 14px;
       border: 1px solid #ddd;
@@ -93,7 +115,7 @@ function injectAuthModal() {
       margin-bottom: 10px;
       transition: border-color 0.2s;
     }
-    #auth-form input:focus {
+    #auth-form input:focus, #username-form input:focus {
       outline: none;
       border-color: #000;
     }
@@ -141,6 +163,11 @@ function injectAuthModal() {
       line-height: 1;
     }
     .auth-close:hover { color: #000; }
+    .username-hint {
+      font-size: 0.75rem;
+      color: #999;
+      margin: -4px 0 8px 2px;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -216,6 +243,47 @@ function closeAuthModal() {
   document.getElementById('auth-submit-btn').textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
 }
 
+async function checkUsernameRequired() {
+  if (!currentUser) return;
+  const { data: profile } = await supabaseClient
+    .from('profiles').select('username').eq('id', currentUser.id).single();
+  if (!profile?.username) {
+    document.getElementById('username-modal').classList.add('active');
+    document.getElementById('username-input').focus();
+  }
+}
+
+async function handleUsernameSubmit(e) {
+  e.preventDefault();
+  const input = document.getElementById('username-input');
+  const errorEl = document.getElementById('username-error');
+  const btn = document.getElementById('username-submit-btn');
+  const username = input.value.trim().toLowerCase();
+  errorEl.textContent = '';
+
+  if (!/^[a-zA-Z0-9_-]{3,24}$/.test(username)) {
+    errorEl.textContent = 'Username must be 3-24 characters (letters, numbers, hyphens, underscores)';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const { error } = await supabaseClient.from('profiles').update({
+    username: username
+  }).eq('id', currentUser.id);
+
+  if (error) {
+    errorEl.textContent = error.message.includes('unique') ? 'Username already taken' : 'Error saving username';
+    btn.disabled = false;
+    btn.textContent = 'Continue';
+  } else {
+    document.getElementById('username-modal').classList.remove('active');
+    // Refresh page if on profile
+    if (typeof loadProfile === 'function') loadProfile();
+  }
+}
+
 async function signOut() {
   await supabaseClient.auth.signOut();
   currentUser = null;
@@ -233,10 +301,11 @@ function renderAuthUI() {
 
   if (currentUser) {
     const name = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User';
+    const isProfilePage = window.location.pathname.endsWith('profile.html');
     container.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;">
         <a href="/profile.html" style="color:#000;text-decoration:none;font-weight:500;">${name}</a>
-        <button onclick="signOut()" style="background:none;border:1px solid #ddd;border-radius:16px;padding:4px 12px;cursor:pointer;font-size:0.8rem;">Sign out</button>
+        ${isProfilePage ? '<button onclick="signOut()" style="background:none;border:1px solid #ddd;border-radius:16px;padding:4px 12px;cursor:pointer;font-size:0.8rem;">Sign out</button>' : ''}
       </div>
     `;
   } else {

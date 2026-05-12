@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS puzzles (
 CREATE TABLE IF NOT EXISTS votes (
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   puzzle_id text REFERENCES puzzles(id) ON DELETE CASCADE,
+  value smallint NOT NULL DEFAULT 1 CHECK (value IN (-1, 1)),
   created_at timestamptz DEFAULT now(),
   PRIMARY KEY (user_id, puzzle_id)
 );
@@ -93,13 +94,18 @@ SELECT
   p.completion_count,
   p.created_at,
   COALESCE(v.vote_count, 0) AS vote_count,
+  COALESCE(v.upvotes, 0) AS upvotes,
+  COALESCE(v.downvotes, 0) AS downvotes,
   CASE WHEN p.play_count > 0
     THEN ROUND(p.completion_count::numeric / p.play_count * 100, 1)
     ELSE 0
   END AS completion_pct
 FROM puzzles p
 LEFT JOIN (
-  SELECT puzzle_id, COUNT(*) AS vote_count
+  SELECT puzzle_id,
+    SUM(value)::int AS vote_count,
+    COUNT(*) FILTER (WHERE value = 1)::int AS upvotes,
+    COUNT(*) FILTER (WHERE value = -1)::int AS downvotes
   FROM votes
   GROUP BY puzzle_id
 ) v ON v.puzzle_id = p.id;
@@ -127,6 +133,9 @@ CREATE POLICY "Votes are publicly readable"
 DROP POLICY IF EXISTS "Users can insert their own votes" ON votes;
 CREATE POLICY "Users can insert their own votes"
   ON votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own votes" ON votes;
+CREATE POLICY "Users can update their own votes"
+  ON votes FOR UPDATE USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Users can delete their own votes" ON votes;
 CREATE POLICY "Users can delete their own votes"
   ON votes FOR DELETE USING (auth.uid() = user_id);
