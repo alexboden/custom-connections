@@ -392,6 +392,15 @@
         }
 
         async function loadProfile() {
+            const params = new URLSearchParams(window.location.search);
+            const viewUsername = params.get('user');
+
+            // Public profile view
+            if (viewUsername) {
+                await loadPublicProfile(viewUsername);
+                return;
+            }
+
             if (!currentUser) {
                 showSignInPrompt();
                 return;
@@ -403,6 +412,11 @@
 
             const name = profile?.display_name || currentUser.user_metadata?.full_name || '';
             const username = profile?.username || '';
+
+            // If viewing own profile via username, redirect to clean URL
+            if (viewUsername && currentUser && profile?.username === viewUsername) {
+                window.history.replaceState({}, '', '/profile.html');
+            }
 
             // Fetch user's puzzles
             const { data: puzzles } = await supabaseClient
@@ -483,7 +497,7 @@
                     const categories = deserialize(p.data);
                     html += `
                         <div class="puzzle-item">
-                            <a href="/?p=${p.id}">${getPuzzleTitle(categories, p.id, p.name)}</a>
+                            <a href="/play.html?p=${p.id}">${getPuzzleTitle(categories, p.id, p.name)}</a>
                             <div class="puzzle-item-stats">
                                 &#9650;${p.upvotes} &#9660;${p.downvotes} &middot; ${p.play_count} plays &middot; ${p.completion_pct}% solved
                             </div>
@@ -492,6 +506,86 @@
                 });
             } else {
                 html += '<div class="empty">No puzzles created yet. <a href="/create.html">Create one!</a></div>';
+            }
+
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        async function loadPublicProfile(username) {
+            // Look up user by username
+            const { data: profile, error } = await supabaseClient
+                .from('profiles').select('id, username, display_name').eq('username', username).single();
+
+            if (error || !profile) {
+                document.getElementById('content').innerHTML = `
+                    <div class="sign-in-prompt">
+                        <p>User not found.</p>
+                        <a href="/" style="color:#000;">Back to puzzles</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // If this is the current user's own profile, load the full editable version
+            if (currentUser && currentUser.id === profile.id) {
+                window.history.replaceState({}, '', '/profile.html');
+                await loadProfile();
+                return;
+            }
+
+            const name = profile.display_name || '';
+            const displayUsername = '@' + profile.username;
+
+            // Fetch their puzzles
+            const { data: puzzles } = await supabaseClient
+                .from('puzzle_stats')
+                .select('*')
+                .eq('creator_id', profile.id)
+                .order('created_at', { ascending: false });
+
+            const totalCreated = puzzles?.length || 0;
+            const totalVotes = puzzles?.reduce((sum, p) => sum + p.vote_count, 0) || 0;
+
+            document.title = displayUsername + ' — Four of a Kind';
+
+            let html = `
+                <div class="profile-header">
+                    <div>
+                        <div class="profile-name">${displayUsername}</div>
+                        <div class="profile-email">${name}</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${totalCreated}</div>
+                        <div class="stat-label">Puzzles Created</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalVotes}</div>
+                        <div class="stat-label">Total Votes Received</div>
+                    </div>
+                </div>
+
+                <h2>Puzzles by ${displayUsername}</h2>
+                <div class="puzzle-list">
+            `;
+
+            if (puzzles && puzzles.length > 0) {
+                puzzles.forEach(p => {
+                    const categories = deserialize(p.data);
+                    html += `
+                        <div class="puzzle-item">
+                            <a href="/play.html?p=${p.id}">${getPuzzleTitle(categories, p.id, p.name)}</a>
+                            <div class="puzzle-item-stats">
+                                &#9650;${p.upvotes} &#9660;${p.downvotes} &middot; ${p.play_count} plays &middot; ${p.completion_pct}% solved
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                html += '<div class="empty">No puzzles yet.</div>';
             }
 
             html += '</div>';

@@ -426,7 +426,7 @@
         function showCreatorInfo(name) {
             const subtitle = document.getElementById('subtitle');
             if (name) {
-                subtitle.innerHTML = 'Created by <strong>' + name + '</strong>';
+                subtitle.innerHTML = 'Created by <a href="/profile.html?user=' + encodeURIComponent(name) + '" style="color:inherit;text-decoration:underline;font-weight:600;">' + name + '</a>';
             }
         }
 
