@@ -524,6 +524,14 @@
 
         function submitGuess() {
             if (selected.length !== 4) return;
+            const sortedSelection = [...selected].sort();
+            const alreadyGuessed = guessHistory.some(g =>
+                [...g.words].sort().every((w, i) => w === sortedSelection[i])
+            );
+            if (alreadyGuessed) {
+                showMessage('Already guessed!', 'error');
+                return;
+            }
             const match = gameData.groups.find(g =>
                 g.words.every(w => selected.includes(w)) && g.words.length === selected.length
             );
