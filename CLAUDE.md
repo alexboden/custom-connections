@@ -12,8 +12,8 @@ A custom Connections puzzle game where users create and share word-grouping puzz
 ## Project Structure
 
 ```
-index.html          — Main app (create + play puzzles)
-browse.html         — Leaderboard / discover puzzles
+index.html          — Home page (browse/discover puzzles, leaderboard)
+create.html         — Create + play puzzles
 profile.html        — User profile (stats, created puzzles)
 js/
   supabase-config.js — Supabase client init (URL + anon key)

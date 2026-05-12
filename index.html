@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Browse Puzzles — Four of a Kind</title>
+    <title>Four of a Kind</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -191,7 +191,7 @@
 </head>
 <body>
     <div class="nav-links">
-        <a href="/">Create</a>
+        <a href="/create.html">Create</a>
         <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
     </div>
 
@@ -307,7 +307,7 @@
             }
 
             if (data.length === 0 && page === 0) {
-                document.getElementById('puzzle-grid').innerHTML = '<div class="empty">No puzzles yet. <a href="/">Create the first one!</a></div>';
+                document.getElementById('puzzle-grid').innerHTML = '<div class="empty">No puzzles yet. <a href="/create.html">Create the first one!</a></div>';
                 document.getElementById('load-more').style.display = 'none';
                 return;
             }
