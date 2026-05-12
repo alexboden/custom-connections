@@ -278,33 +278,54 @@
         let mistakesLeft = 4;
         let guessHistory = [];
 
-        // --- ENCODING ---
-        // Compact format: "cat1~w1~w2~w3~w4|cat2~w1~w2~w3~w4|..." (no JSON overhead)
-        function encode(groups) {
-            const str = groups.map(g => [g.category, ...g.words].join('~')).join('|');
-            return btoa(unescape(encodeURIComponent(str)));
+        // --- ENCODING (compact + compressed) ---
+        // Format: "cat1~w1~w2~w3~w4|cat2~..." → deflate-raw → base64url
+        function serialize(groups) {
+            return groups.map(g => [g.category, ...g.words].join('~')).join('|');
         }
 
-        function decode(hash) {
-            const str = decodeURIComponent(escape(atob(hash)));
-            const groups = str.split('|').map((part, i) => {
+        function deserialize(str) {
+            return { groups: str.split('|').map((part, i) => {
                 const [category, ...words] = part.split('~');
                 return { category, words, color: COLORS[i] };
-            });
-            return { groups };
+            })};
+        }
+
+        async function compress(str) {
+            const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+            const buf = await new Response(stream).arrayBuffer();
+            // base64url encoding (URL-safe, no padding)
+            return btoa(String.fromCharCode(...new Uint8Array(buf)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        async function decompress(b64url) {
+            // Restore standard base64 from base64url
+            let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4) b64 += '=';
+            const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+            const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+            return await new Response(stream).text();
         }
 
         // --- INIT ---
-        function init() {
+        async function init() {
             const hash = location.hash.slice(1);
             if (hash) {
                 try {
-                    // Try new compact format first, fall back to legacy JSON format
+                    const decoded = decodeURIComponent(hash);
+                    // Try compressed format first, then plain base64, then legacy JSON
                     try {
-                        gameData = decode(decodeURIComponent(hash));
+                        const str = await decompress(decoded);
+                        gameData = deserialize(str);
                     } catch (_) {
-                        const json = atob(decodeURIComponent(hash));
-                        gameData = JSON.parse(json);
+                        try {
+                            const str = decodeURIComponent(escape(atob(decoded)));
+                            gameData = deserialize(str);
+                        } catch (__) {
+                            const json = atob(decoded);
+                            gameData = JSON.parse(json);
+                        }
                     }
                     if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
                     showGame();
@@ -342,7 +363,7 @@
             `).join('');
         }
 
-        function generateLink() {
+        async function generateLink() {
             const groups = [];
             const errors = [];
             for (let i = 0; i < 4; i++) {
@@ -373,7 +394,7 @@
                 return;
             }
             gameData = { groups };
-            const encoded = encodeURIComponent(encode(groups));
+            const encoded = await compress(serialize(groups));
             const url = location.origin + location.pathname + '#' + encoded;
             document.getElementById('share-link').textContent = url;
             document.getElementById('share-modal').classList.add('active');
