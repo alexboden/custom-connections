@@ -232,8 +232,9 @@
     <div class="tabs">
         <button class="tab active" data-sort="vote_count">Most Voted</button>
         <button class="tab" data-sort="created_at">Newest</button>
-        <button class="tab" onclick="playRandom()" style="background:#000;color:#fff;border-color:#000;">Random</button>
     </div>
+
+    <button onclick="playRandom()" style="display:block;margin:1rem auto;padding:0.6rem 1.5rem;font-size:1rem;font-weight:600;background:#000;color:#fff;border:none;border-radius:999px;cursor:pointer;">&#9654; Play Random Puzzle</button>
 
     <div class="puzzle-grid" id="puzzle-grid">
         <div class="loading">Loading puzzles...</div>
@@ -261,8 +262,10 @@
             });
         }
 
-        function getPuzzleTitle(categories, puzzleId) {
-            // Pick one consistent word from the puzzle using the ID as a seed
+        function getPuzzleTitle(categories, puzzleId, puzzleName) {
+            // Use creator-chosen name if available
+            if (puzzleName) return puzzleName.toUpperCase();
+            // Fallback: pick one consistent word from the puzzle using the ID as a seed
             const allWords = categories.flatMap(c => c.words);
             if (allWords.length === 0) return 'Puzzle';
             let hash = 0;
@@ -338,7 +341,7 @@
                 card.href = '/create.html?p=' + puzzle.id;
                 const solvedBadge = userPlays.has(puzzle.id) ? '<span class="puzzle-solved">Solved</span>' : '';
                 card.innerHTML = `
-                    <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}${solvedBadge}</div>
+                    <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id, puzzle.name)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}${solvedBadge}</div>
                     <div class="puzzle-stats">
                         <span>&#9650;${puzzle.upvotes} &#9660;${puzzle.downvotes}</span>
                         <span>&#9654; ${puzzle.play_count} plays</span>
