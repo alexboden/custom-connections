@@ -77,7 +77,9 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             transition: opacity 0.2s;
         }
-        .btn:hover { opacity: 0.8; }
+        .btn { transition: opacity 0.2s ease, transform 0.15s ease; }
+        .btn:hover { opacity: 0.8; transform: scale(0.98); }
+        .btn:active { transform: scale(0.95); }
         .btn-primary { background: #000; color: #fff; }
         .btn-secondary { background: #fff; color: #000; border: 1px solid #ddd; }
         .btn-submit { background: #000; color: #fff; margin-top: 8px; width: 100%; padding: 16px; }
@@ -90,12 +92,12 @@
             border-radius: 8px;
             margin-bottom: 8px;
             text-align: center;
-            animation: reveal 0.4s ease;
+            animation: reveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
         @keyframes reveal {
-            from { transform: scaleY(0); opacity: 0; }
-            to { transform: scaleY(1); opacity: 1; }
+            from { transform: scaleY(0.6) translateY(-8px); opacity: 0; }
+            to { transform: scaleY(1) translateY(0); opacity: 1; }
         }
         .solved-group .group-name { font-weight: 700; font-size: 0.85rem; text-transform: uppercase; }
         .solved-group .group-words { font-size: 0.9rem; margin-top: 4px; }
@@ -124,19 +126,22 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             cursor: pointer;
             user-select: none;
-            transition: background 0.15s, transform 0.1s;
+            transition: background 0.2s ease, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
             word-break: break-word;
             overflow-wrap: anywhere;
             line-height: 1.2;
             text-transform: uppercase;
         }
-        .tile:hover { background: #e2e2d8; }
-        .tile.selected { background: #5a594e; color: #fff; transform: scale(0.97); }
-        .tile.wrong { animation: shake 0.4s ease; }
+        .tile:hover { background: #e2e2d8; transform: scale(1.02); }
+        .tile:active { transform: scale(0.96); }
+        .tile.selected { background: #5a594e; color: #fff; transform: scale(0.95); }
+        .tile.wrong { animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
         @keyframes shake {
-            25% { transform: translateX(-4px); }
-            50% { transform: translateX(4px); }
-            75% { transform: translateX(-4px); }
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(5px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(2px); }
         }
 
         .controls {
@@ -158,8 +163,9 @@
             border-radius: 50%;
             background: #5a594e;
             margin: 0 3px;
+            transition: background 0.4s ease, transform 0.3s ease;
         }
-        .mistakes .dot.used { background: #ddd; }
+        .mistakes .dot.used { background: #ddd; transform: scale(0.8); }
 
         .message {
             text-align: center;
@@ -176,15 +182,18 @@
 
         /* Share modal */
         .modal-overlay {
-            display: none;
+            display: flex;
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.5);
             align-items: center;
             justify-content: center;
             z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
         }
-        .modal-overlay.active { display: flex; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .modal {
             background: #fff;
             border-radius: 16px;
@@ -192,7 +201,10 @@
             max-width: 480px;
             width: 90%;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+        .modal-overlay.active .modal { transform: scale(1) translateY(0); }
         .modal h2 { margin-bottom: 16px; font-family: Georgia, serif; }
         .modal .link-box {
             background: #f5f5f5;
@@ -266,13 +278,35 @@
         let mistakesLeft = 4;
         let guessHistory = [];
 
+        // --- ENCODING ---
+        // Compact format: "cat1~w1~w2~w3~w4|cat2~w1~w2~w3~w4|..." (no JSON overhead)
+        function encode(groups) {
+            const str = groups.map(g => [g.category, ...g.words].join('~')).join('|');
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+
+        function decode(hash) {
+            const str = decodeURIComponent(escape(atob(hash)));
+            const groups = str.split('|').map((part, i) => {
+                const [category, ...words] = part.split('~');
+                return { category, words, color: COLORS[i] };
+            });
+            return { groups };
+        }
+
         // --- INIT ---
         function init() {
             const hash = location.hash.slice(1);
             if (hash) {
                 try {
-                    const json = atob(decodeURIComponent(hash));
-                    gameData = JSON.parse(json);
+                    // Try new compact format first, fall back to legacy JSON format
+                    try {
+                        gameData = decode(decodeURIComponent(hash));
+                    } catch (_) {
+                        const json = atob(decodeURIComponent(hash));
+                        gameData = JSON.parse(json);
+                    }
+                    if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
                     showGame();
                 } catch (e) {
                     alert('Invalid puzzle link!');
@@ -339,7 +373,7 @@
                 return;
             }
             gameData = { groups };
-            const encoded = encodeURIComponent(btoa(JSON.stringify(gameData)));
+            const encoded = encodeURIComponent(encode(groups));
             const url = location.origin + location.pathname + '#' + encoded;
             document.getElementById('share-link').textContent = url;
             document.getElementById('share-modal').classList.add('active');
