@@ -231,9 +231,8 @@
 
     <div class="tabs">
         <button class="tab active" data-sort="vote_count">Most Voted</button>
-        <button class="tab" data-sort="play_count">Most Played</button>
         <button class="tab" data-sort="created_at">Newest</button>
-        <button class="tab" data-sort="completion_pct_asc">Hardest</button>
+        <button class="tab" data-sort="random">Random</button>
     </div>
 
     <div class="puzzle-grid" id="puzzle-grid">
@@ -284,16 +283,21 @@
 
             let query = supabaseClient.from('puzzle_stats').select('*');
 
-            if (currentSort === 'completion_pct_asc') {
-                query = query.order('completion_pct', { ascending: true }).gt('play_count', 0);
-            } else if (currentSort === 'created_at') {
-                query = query.order('created_at', { ascending: false });
+            if (currentSort === 'random') {
+                // Fetch all IDs then pick a random page
+                const { count } = await supabaseClient.from('puzzle_stats').select('*', { count: 'exact', head: true });
+                const maxOffset = Math.max(0, (count || 0) - PAGE_SIZE);
+                const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
+                query = query.range(randomOffset, randomOffset + PAGE_SIZE - 1);
             } else {
-                query = query.order(currentSort, { ascending: false });
+                if (currentSort === 'created_at') {
+                    query = query.order('created_at', { ascending: false });
+                } else {
+                    query = query.order(currentSort, { ascending: false });
+                }
+                const from = page * PAGE_SIZE;
+                query = query.range(from, from + PAGE_SIZE - 1);
             }
-
-            const from = page * PAGE_SIZE;
-            query = query.range(from, from + PAGE_SIZE - 1);
 
             const { data, error } = await query;
 
@@ -325,7 +329,7 @@
                 return;
             }
 
-            if (data.length < PAGE_SIZE) {
+            if (currentSort === 'random' || data.length < PAGE_SIZE) {
                 allLoaded = true;
                 document.getElementById('load-more').style.display = 'none';
             } else {
