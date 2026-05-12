@@ -381,18 +381,16 @@
         }
 
         async function playRandom() {
-            // Fetch all puzzle IDs, exclude ones the user has solved
-            let query = supabaseClient.from('puzzle_stats').select('id');
-            if (userPlays.size > 0) {
-                const solvedIds = [...userPlays];
-                query = query.not('id', 'in', `(${solvedIds.join(',')})`);
-            }
-            const { data } = await query;
+            // Fetch all puzzle IDs
+            const { data, error } = await supabaseClient.from('puzzle_stats').select('id');
             if (!data || data.length === 0) {
-                alert('No unsolved puzzles available!');
+                alert('No puzzles available!');
                 return;
             }
-            const random = data[Math.floor(Math.random() * data.length)];
+            // Filter out solved puzzles client-side
+            let unsolved = data.filter(p => !userPlays.has(p.id));
+            if (unsolved.length === 0) unsolved = data; // fallback to all if everything solved
+            const random = unsolved[Math.floor(Math.random() * unsolved.length)];
             window.location.href = '/p/' + random.id;
         }
 
