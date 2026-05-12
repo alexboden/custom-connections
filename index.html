@@ -457,6 +457,11 @@
 
         function renderGrid() {
             const remaining = getRemaining();
+            // Shuffle tiles so they don't appear in category order
+            for (let i = remaining.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+            }
             const grid = document.getElementById('grid');
             grid.innerHTML = remaining.map(item => `
                 <div class="tile" data-word="${item.word}" onclick="toggleTile(this)">
@@ -619,7 +624,6 @@
 
         window.addEventListener('load', () => {
             init();
-            if (gameData && location.hash) setTimeout(shuffleTiles, 100);
         });
     </script>
 </body>
