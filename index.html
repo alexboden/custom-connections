@@ -232,7 +232,7 @@
     <div class="tabs">
         <button class="tab active" data-sort="vote_count">Most Voted</button>
         <button class="tab" data-sort="created_at">Newest</button>
-        <button class="tab" data-sort="random">Random</button>
+        <button class="tab" onclick="playRandom()" style="background:#000;color:#fff;border-color:#000;">Random</button>
     </div>
 
     <div class="puzzle-grid" id="puzzle-grid">
@@ -283,21 +283,13 @@
 
             let query = supabaseClient.from('puzzle_stats').select('*');
 
-            if (currentSort === 'random') {
-                // Fetch all IDs then pick a random page
-                const { count } = await supabaseClient.from('puzzle_stats').select('*', { count: 'exact', head: true });
-                const maxOffset = Math.max(0, (count || 0) - PAGE_SIZE);
-                const randomOffset = Math.floor(Math.random() * (maxOffset + 1));
-                query = query.range(randomOffset, randomOffset + PAGE_SIZE - 1);
+            if (currentSort === 'created_at') {
+                query = query.order('created_at', { ascending: false });
             } else {
-                if (currentSort === 'created_at') {
-                    query = query.order('created_at', { ascending: false });
-                } else {
-                    query = query.order(currentSort, { ascending: false });
-                }
-                const from = page * PAGE_SIZE;
-                query = query.range(from, from + PAGE_SIZE - 1);
+                query = query.order(currentSort, { ascending: false });
             }
+            const from = page * PAGE_SIZE;
+            query = query.range(from, from + PAGE_SIZE - 1);
 
             const { data, error } = await query;
 
@@ -329,7 +321,7 @@
                 return;
             }
 
-            if (currentSort === 'random' || data.length < PAGE_SIZE) {
+            if (data.length < PAGE_SIZE) {
                 allLoaded = true;
                 document.getElementById('load-more').style.display = 'none';
             } else {
@@ -365,7 +357,7 @@
         }
 
         // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
+        document.querySelectorAll('.tab[data-sort]').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelector('.tab.active').classList.remove('active');
                 tab.classList.add('active');
@@ -383,6 +375,22 @@
             if (data) {
                 userPlays = new Set(data.map(p => p.puzzle_id));
             }
+        }
+
+        async function playRandom() {
+            // Fetch all puzzle IDs, exclude ones the user has solved
+            let query = supabaseClient.from('puzzle_stats').select('id');
+            if (userPlays.size > 0) {
+                const solvedIds = [...userPlays];
+                query = query.not('id', 'in', `(${solvedIds.join(',')})`);
+            }
+            const { data } = await query;
+            if (!data || data.length === 0) {
+                alert('No unsolved puzzles available!');
+                return;
+            }
+            const random = data[Math.floor(Math.random() * data.length)];
+            window.location.href = '/create.html?p=' + random.id;
         }
 
         window.addEventListener('load', async () => {
