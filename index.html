@@ -345,12 +345,18 @@
                         }
                     }
                     if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
+                    // Store puzzle in sessionStorage and clean the URL
+                    sessionStorage.setItem('puzzle', JSON.stringify(gameData));
+                    history.replaceState(null, '', location.pathname);
                     showGame();
                 } catch (e) {
                     alert('Invalid puzzle link!');
                     location.hash = '';
                     showCreator();
                 }
+            } else if (sessionStorage.getItem('puzzle')) {
+                gameData = JSON.parse(sessionStorage.getItem('puzzle'));
+                showGame();
             } else {
                 showCreator();
             }
