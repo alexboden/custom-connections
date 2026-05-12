@@ -42,23 +42,20 @@
         }
         .nav-links a:hover { text-decoration: underline; }
         .help-btn {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid #000;
-            background: #fff;
-            font-family: Georgia, serif;
-            font-size: 0.8rem;
-            font-weight: 700;
+            width: 18px;
+            height: 18px;
+            border: none;
+            background: none;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             vertical-align: middle;
             padding: 0;
-            line-height: 1;
+            opacity: 0.5;
         }
-        .help-btn:hover { background: #f0f0f0; }
+        .help-btn:hover { opacity: 1; }
+        .help-btn svg { width: 18px; height: 18px; }
         .help-modal-overlay {
             position: fixed;
             inset: 0;
@@ -123,13 +120,7 @@
             background: #f9f9f9;
             border-radius: 12px;
         }
-        .profile-avatar {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #ddd;
-        }
-        .profile-name { font-size: 1.2rem; font-weight: 700; }
+.profile-name { font-size: 1.2rem; font-weight: 700; }
         .profile-email { font-size: 0.85rem; color: #666; }
 
         .stats-grid {
@@ -268,7 +259,7 @@
     <div class="nav-links">
         <a href="/">Create</a>
         <a href="/browse.html">Browse</a>
-        <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
+        <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
     </div>
 
     <!-- HELP MODAL -->
@@ -403,9 +394,7 @@
             const { data: profile } = await supabaseClient
                 .from('profiles').select('*').eq('id', currentUser.id).single();
 
-            const name = profile?.display_name || currentUser.user_metadata?.full_name || currentUser.email || 'User';
-            const avatar = profile?.avatar_url || currentUser.user_metadata?.avatar_url;
-            const email = currentUser.email || '';
+            const name = profile?.display_name || currentUser.user_metadata?.full_name || 'User';
             const username = profile?.username || '';
 
             // Fetch user's puzzles
@@ -430,11 +419,10 @@
             const totalCreated = puzzles?.length || 0;
             const totalVotes = puzzles?.reduce((sum, p) => sum + p.vote_count, 0) || 0;
 
-            const displayUsername = username ? '@' + username : email;
+            const displayUsername = username ? '@' + username : name;
 
             let html = `
                 <div class="profile-header">
-                    ${avatar ? `<img src="${avatar}" class="profile-avatar" alt="">` : '<div class="profile-avatar"></div>'}
                     <div>
                         <div class="profile-name" id="profile-display-username">${displayUsername}</div>
                         <div class="profile-email" id="profile-display-name">${username ? name : ''}</div>

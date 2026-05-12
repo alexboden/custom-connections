@@ -42,23 +42,20 @@
         }
         .nav-links a:hover { text-decoration: underline; }
         .help-btn {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid #000;
-            background: #fff;
-            font-family: Georgia, serif;
-            font-size: 0.8rem;
-            font-weight: 700;
+            width: 18px;
+            height: 18px;
+            border: none;
+            background: none;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             vertical-align: middle;
             padding: 0;
-            line-height: 1;
+            opacity: 0.5;
         }
-        .help-btn:hover { background: #f0f0f0; }
+        .help-btn:hover { opacity: 1; }
+        .help-btn svg { width: 18px; height: 18px; }
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -192,7 +189,7 @@
 <body>
     <div class="nav-links">
         <a href="/">Create</a>
-        <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')">?</button>
+        <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
     </div>
 
     <!-- HELP MODAL -->
