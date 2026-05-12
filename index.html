@@ -282,7 +282,8 @@
         // --- ENCODING (compact + compressed) ---
         // Format: "cat1~w1~w2~w3~w4|cat2~..." → deflate-raw → base64url
         function serialize(groups) {
-            return groups.map(g => [g.category, ...g.words].join('~')).join('|');
+            // Lowercase reduces alphabet size → better compression (CSS uppercases display)
+            return groups.map(g => [g.category, ...g.words].join('~')).join('|').toLowerCase();
         }
 
         function deserialize(str) {
