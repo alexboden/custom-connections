@@ -177,7 +177,7 @@
                 document.getElementById('puzzle-grid').innerHTML = '<div class="loading">Loading puzzles...</div>';
             }
 
-            let query = supabaseClient.from('puzzle_stats').select('*, profiles:creator_id(username)');
+            let query = supabaseClient.from('puzzle_stats').select('*');
 
             if (currentSort === 'completion_pct_asc') {
                 query = query.order('completion_pct', { ascending: true }).gt('play_count', 0);
@@ -191,6 +191,19 @@
             query = query.range(from, from + PAGE_SIZE - 1);
 
             const { data, error } = await query;
+
+            // Fetch usernames for creators
+            if (data && data.length > 0) {
+                const creatorIds = [...new Set(data.map(p => p.creator_id).filter(Boolean))];
+                if (creatorIds.length > 0) {
+                    const { data: profiles } = await supabaseClient
+                        .from('profiles')
+                        .select('id, username')
+                        .in('id', creatorIds);
+                    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.username]));
+                    data.forEach(p => { p._username = profileMap[p.creator_id] || null; });
+                }
+            }
 
             if (error) {
                 document.getElementById('puzzle-grid').innerHTML = '<div class="empty">Failed to load puzzles.</div>';
@@ -218,14 +231,14 @@
             data.forEach(puzzle => {
                 const categories = deserialize(puzzle.data);
                 const date = new Date(puzzle.created_at).toLocaleDateString();
-                const username = puzzle.profiles?.username;
+                const username = puzzle._username;
                 const card = document.createElement('a');
                 card.className = 'puzzle-card';
                 card.href = '/?p=' + puzzle.id;
                 card.innerHTML = `
                     <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}</div>
                     <div class="puzzle-stats">
-                        <span>&#9650;${puzzle.vote_count}</span>
+                        <span>&#9650;${puzzle.upvotes} &#9660;${puzzle.downvotes}</span>
                         <span>&#9654; ${puzzle.play_count} plays</span>
                         <span>${puzzle.completion_pct}% solved</span>
                     </div>
