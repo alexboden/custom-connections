@@ -450,6 +450,25 @@
                     const { data, error } = await supabaseClient
                         .from('puzzles').select('data').eq('id', puzzleId).single();
                     if (error || !data) throw new Error('Puzzle not found');
+
+                    // Check if user already played this puzzle
+                    if (currentUser) {
+                        const { data: existingPlay } = await supabaseClient
+                            .from('plays')
+                            .select('id, won, mistakes')
+                            .eq('puzzle_id', puzzleId)
+                            .eq('user_id', currentUser.id)
+                            .limit(1)
+                            .single();
+                        if (existingPlay) {
+                            gameData = deserialize(data.data);
+                            currentPuzzleId = puzzleId;
+                            history.replaceState(null, '', location.pathname);
+                            showAlreadyPlayed(existingPlay);
+                            return;
+                        }
+                    }
+
                     gameData = deserialize(data.data);
                     currentPuzzleId = puzzleId;
                     if (!gameData.groups || gameData.groups.length !== 4) throw new Error();
@@ -604,6 +623,26 @@
         }
 
         // --- GAME ---
+        function showAlreadyPlayed(play) {
+            document.getElementById('creator').style.display = 'none';
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('result-title').textContent = play.won
+                ? 'You already solved this puzzle!'
+                : 'You already played this puzzle.';
+            document.getElementById('emoji-grid').innerHTML = '';
+            // Show all groups as revealed
+            const container = document.getElementById('result-solved-groups');
+            container.innerHTML = gameData.groups.map(g => `
+                <div class="solved-group bg-${g.color}">
+                    <div class="group-name">${g.category}</div>
+                    <div class="group-words">${g.words.join(', ')}</div>
+                </div>
+            `).join('');
+            // Show vote buttons
+            if (currentPuzzleId) loadVoteState();
+        }
+
         function showGame() {
             document.getElementById('creator').style.display = 'none';
             document.getElementById('game').style.display = 'block';
