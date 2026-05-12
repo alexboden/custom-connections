@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Puzzles — Four of a Kind</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #fff;
+            color: #000;
+            min-height: 100vh;
+            padding: 32px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-family: 'NY Times Karnak', Georgia, serif;
+            font-size: 2rem;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #6f6f6f;
+            margin-bottom: 32px;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+        .nav-links {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            font-size: 0.85rem;
+            z-index: 50;
+        }
+        .nav-links a {
+            color: #000;
+            text-decoration: none;
+            margin-right: 16px;
+            font-weight: 500;
+        }
+        .nav-links a:hover { text-decoration: underline; }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .tab:hover { border-color: #000; }
+        .tab.active { background: #000; color: #fff; border-color: #000; }
+
+        .puzzle-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+        }
+        .puzzle-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 20px;
+            transition: border-color 0.2s, transform 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .puzzle-card:hover { border-color: #000; transform: translateY(-2px); }
+        .puzzle-categories {
+            margin-bottom: 12px;
+        }
+        .puzzle-categories span {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 4px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .cat-yellow { background: #f9df6d; }
+        .cat-green { background: #a0c35a; }
+        .cat-blue { background: #b0c4ef; }
+        .cat-purple { background: #ba81c5; }
+        .puzzle-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .puzzle-stats span { display: flex; align-items: center; gap: 4px; }
+        .puzzle-date { font-size: 0.75rem; color: #999; margin-top: 8px; }
+
+        .loading { text-align: center; padding: 40px; color: #999; }
+        .empty { text-align: center; padding: 40px; color: #666; }
+        .load-more {
+            display: block;
+            margin: 24px auto;
+            padding: 12px 24px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .load-more:hover { border-color: #000; }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="/">Create</a>
+    </div>
+
+    <h1>Browse Puzzles</h1>
+    <p class="subtitle">Discover and play community puzzles</p>
+
+    <div class="tabs">
+        <button class="tab active" data-sort="vote_count">Most Voted</button>
+        <button class="tab" data-sort="play_count">Most Played</button>
+        <button class="tab" data-sort="created_at">Newest</button>
+        <button class="tab" data-sort="completion_pct_asc">Hardest</button>
+    </div>
+
+    <div class="puzzle-grid" id="puzzle-grid">
+        <div class="loading">Loading puzzles...</div>
+    </div>
+
+    <button class="load-more" id="load-more" style="display:none;" onclick="loadMore()">Load more</button>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/supabase-config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        const COLORS = ['yellow', 'green', 'blue', 'purple'];
+        let currentSort = 'vote_count';
+        let page = 0;
+        const PAGE_SIZE = 20;
+        let allLoaded = false;
+
+        function deserialize(str) {
+            return str.split('|').map((part, i) => {
+                const [category] = part.split('~');
+                return { category, color: COLORS[i] };
+            });
+        }
+
+        async function loadPuzzles(reset = false) {
+            if (reset) {
+                page = 0;
+                allLoaded = false;
+                document.getElementById('puzzle-grid').innerHTML = '<div class="loading">Loading puzzles...</div>';
+            }
+
+            let query = supabaseClient.from('puzzle_stats').select('*');
+
+            if (currentSort === 'completion_pct_asc') {
+                query = query.order('completion_pct', { ascending: true }).gt('play_count', 0);
+            } else if (currentSort === 'created_at') {
+                query = query.order('created_at', { ascending: false });
+            } else {
+                query = query.order(currentSort, { ascending: false });
+            }
+
+            const from = page * PAGE_SIZE;
+            query = query.range(from, from + PAGE_SIZE - 1);
+
+            const { data, error } = await query;
+
+            if (error) {
+                document.getElementById('puzzle-grid').innerHTML = '<div class="empty">Failed to load puzzles.</div>';
+                return;
+            }
+
+            if (reset) {
+                document.getElementById('puzzle-grid').innerHTML = '';
+            }
+
+            if (data.length === 0 && page === 0) {
+                document.getElementById('puzzle-grid').innerHTML = '<div class="empty">No puzzles yet. <a href="/">Create the first one!</a></div>';
+                document.getElementById('load-more').style.display = 'none';
+                return;
+            }
+
+            if (data.length < PAGE_SIZE) {
+                allLoaded = true;
+                document.getElementById('load-more').style.display = 'none';
+            } else {
+                document.getElementById('load-more').style.display = 'block';
+            }
+
+            const grid = document.getElementById('puzzle-grid');
+            data.forEach(puzzle => {
+                const categories = deserialize(puzzle.data);
+                const date = new Date(puzzle.created_at).toLocaleDateString();
+                const card = document.createElement('a');
+                card.className = 'puzzle-card';
+                card.href = '/?p=' + puzzle.id;
+                card.innerHTML = `
+                    <div class="puzzle-categories">
+                        ${categories.map(c => `<span class="cat-${c.color}">${c.category}</span>`).join('')}
+                    </div>
+                    <div class="puzzle-stats">
+                        <span>&#9829; ${puzzle.vote_count}</span>
+                        <span>&#9654; ${puzzle.play_count} plays</span>
+                        <span>${puzzle.completion_pct}% solved</span>
+                    </div>
+                    <div class="puzzle-date">${date}</div>
+                `;
+                grid.appendChild(card);
+            });
+
+            page++;
+        }
+
+        function loadMore() {
+            if (!allLoaded) loadPuzzles(false);
+        }
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelector('.tab.active').classList.remove('active');
+                tab.classList.add('active');
+                currentSort = tab.dataset.sort;
+                loadPuzzles(true);
+            });
+        });
+
+        window.addEventListener('load', async () => {
+            await initAuth();
+            loadPuzzles(true);
+        });
+    </script>
+</body>
+</html>

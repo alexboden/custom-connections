@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile — Four of a Kind</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #fff;
+            color: #000;
+            min-height: 100vh;
+            padding: 32px 20px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-family: 'NY Times Karnak', Georgia, serif;
+            font-size: 2rem;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #6f6f6f;
+            margin-bottom: 32px;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+        .nav-links {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            font-size: 0.85rem;
+            z-index: 50;
+        }
+        .nav-links a {
+            color: #000;
+            text-decoration: none;
+            margin-right: 16px;
+            font-weight: 500;
+        }
+        .nav-links a:hover { text-decoration: underline; }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+            padding: 24px;
+            background: #f9f9f9;
+            border-radius: 12px;
+        }
+        .profile-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #ddd;
+        }
+        .profile-name { font-size: 1.2rem; font-weight: 700; }
+        .profile-email { font-size: 0.85rem; color: #666; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.5rem; font-weight: 700; }
+        .stat-label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+        h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .puzzle-list { margin-bottom: 32px; }
+        .puzzle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .puzzle-item:last-child { border-bottom: none; }
+        .puzzle-item a {
+            color: #000;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .puzzle-item a:hover { text-decoration: underline; }
+        .puzzle-item-stats { font-size: 0.8rem; color: #666; }
+
+        .sign-in-prompt {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .sign-in-prompt p { margin-bottom: 16px; color: #666; }
+        .sign-in-btn {
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 12px 24px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .sign-in-btn:hover { opacity: 0.8; }
+
+        .edit-profile {
+            margin-bottom: 32px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 12px;
+        }
+        .edit-profile label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .edit-profile input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+        .edit-profile input:focus { outline: 2px solid #000; border-color: transparent; }
+        .edit-profile button {
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 16px;
+            padding: 8px 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .edit-profile button:hover { opacity: 0.8; }
+        .edit-profile .save-msg {
+            display: inline-block;
+            margin-left: 12px;
+            font-size: 0.85rem;
+            color: #1b5e20;
+        }
+        .loading { text-align: center; padding: 40px; color: #999; }
+        .empty { color: #999; font-size: 0.9rem; padding: 12px 0; }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="/">Create</a>
+        <a href="/browse.html">Browse</a>
+    </div>
+
+    <h1>Profile</h1>
+    <p class="subtitle">Your puzzles and stats</p>
+
+    <div id="content">
+        <div class="loading">Loading...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/supabase-config.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        const COLORS = ['yellow', 'green', 'blue', 'purple'];
+
+        function deserialize(str) {
+            return str.split('|').map((part, i) => {
+                const [category] = part.split('~');
+                return { category, color: COLORS[i] };
+            });
+        }
+
+        function showSignInPrompt() {
+            document.getElementById('content').innerHTML = `
+                <div class="sign-in-prompt">
+                    <p>Sign in to view your profile, created puzzles, and play history.</p>
+                    <button class="sign-in-btn" onclick="signIn()">Sign in</button>
+                </div>
+            `;
+        }
+
+        async function saveProfile() {
+            const username = document.getElementById('input-username').value.trim();
+            const displayName = document.getElementById('input-display-name').value.trim();
+
+            const { error } = await supabaseClient.from('profiles').update({
+                username: username || null,
+                display_name: displayName || null
+            }).eq('id', currentUser.id);
+
+            const msg = document.getElementById('save-msg');
+            if (error) {
+                msg.style.color = '#611a15';
+                msg.textContent = error.message.includes('unique') ? 'Username taken!' : 'Error saving.';
+            } else {
+                msg.style.color = '#1b5e20';
+                msg.textContent = 'Saved!';
+            }
+            setTimeout(() => msg.textContent = '', 2000);
+        }
+
+        async function loadProfile() {
+            if (!currentUser) {
+                showSignInPrompt();
+                return;
+            }
+
+            // Fetch profile
+            const { data: profile } = await supabaseClient
+                .from('profiles').select('*').eq('id', currentUser.id).single();
+
+            const name = profile?.display_name || currentUser.user_metadata?.full_name || currentUser.email || 'User';
+            const avatar = profile?.avatar_url || currentUser.user_metadata?.avatar_url;
+            const email = currentUser.email || '';
+            const username = profile?.username || '';
+
+            // Fetch user's puzzles
+            const { data: puzzles } = await supabaseClient
+                .from('puzzle_stats')
+                .select('*')
+                .eq('creator_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            // Fetch user's play history
+            const { data: plays } = await supabaseClient
+                .from('plays')
+                .select('*')
+                .eq('user_id', currentUser.id);
+
+            const totalPlays = plays?.length || 0;
+            const wins = plays?.filter(p => p.won).length || 0;
+            const winRate = totalPlays > 0 ? Math.round((wins / totalPlays) * 100) : 0;
+            const avgMistakes = totalPlays > 0
+                ? (plays.reduce((sum, p) => sum + p.mistakes, 0) / totalPlays).toFixed(1)
+                : '-';
+            const totalCreated = puzzles?.length || 0;
+            const totalVotes = puzzles?.reduce((sum, p) => sum + p.vote_count, 0) || 0;
+
+            let html = `
+                <div class="profile-header">
+                    ${avatar ? `<img src="${avatar}" class="profile-avatar" alt="">` : '<div class="profile-avatar"></div>'}
+                    <div>
+                        <div class="profile-name">${name}</div>
+                        <div class="profile-email">${email}</div>
+                    </div>
+                </div>
+
+                <div class="edit-profile">
+                    <label>Username</label>
+                    <input type="text" id="input-username" value="${username}" placeholder="Choose a username">
+                    <label>Display Name</label>
+                    <input type="text" id="input-display-name" value="${name}" placeholder="Your display name">
+                    <button onclick="saveProfile()">Save</button>
+                    <span class="save-msg" id="save-msg"></span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${totalCreated}</div>
+                        <div class="stat-label">Puzzles Created</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalPlays}</div>
+                        <div class="stat-label">Games Played</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${winRate}%</div>
+                        <div class="stat-label">Win Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${avgMistakes}</div>
+                        <div class="stat-label">Avg Mistakes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalVotes}</div>
+                        <div class="stat-label">Total Votes Received</div>
+                    </div>
+                </div>
+
+                <h2>My Puzzles</h2>
+                <div class="puzzle-list">
+            `;
+
+            if (puzzles && puzzles.length > 0) {
+                puzzles.forEach(p => {
+                    const categories = deserialize(p.data);
+                    const catNames = categories.map(c => c.category).join(', ');
+                    html += `
+                        <div class="puzzle-item">
+                            <a href="/?p=${p.id}">${catNames}</a>
+                            <div class="puzzle-item-stats">
+                                &#9829; ${p.vote_count} &middot; ${p.play_count} plays &middot; ${p.completion_pct}% solved
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                html += '<div class="empty">No puzzles created yet. <a href="/">Create one!</a></div>';
+            }
+
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        window.addEventListener('load', async () => {
+            await initAuth();
+            loadProfile();
+        });
+    </script>
+</body>
+</html>
