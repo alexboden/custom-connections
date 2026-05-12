@@ -343,7 +343,7 @@
                 const username = puzzle._username;
                 const card = document.createElement('a');
                 card.className = 'puzzle-card';
-                card.href = '/?p=' + puzzle.id;
+                card.href = '/create.html?p=' + puzzle.id;
                 const solvedBadge = userPlays.has(puzzle.id) ? '<span class="puzzle-solved">Solved</span>' : '';
                 card.innerHTML = `
                     <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}${solvedBadge}</div>
