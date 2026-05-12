@@ -241,7 +241,7 @@
         <h2 id="result-title"></h2>
         <div class="emoji-grid" id="emoji-grid"></div>
         <div class="controls">
-            <button class="btn btn-secondary" onclick="copyResult()">Share Result</button>
+            <button class="btn btn-secondary" onclick="copyResult(this)">Share Result</button>
             <button class="btn btn-primary" onclick="location.hash=''; location.reload();">Create Your Own</button>
         </div>
     </div>
@@ -251,7 +251,7 @@
         <div class="modal">
             <h2>Share this puzzle</h2>
             <div class="link-box" id="share-link"></div>
-            <button class="btn btn-primary" onclick="copyLink()">Copy Link</button>
+            <button class="btn btn-primary" onclick="copyLink(this)">Copy Link</button>
             <button class="btn btn-secondary" onclick="closeModal()">Close</button>
         </div>
     </div>
@@ -362,10 +362,9 @@
             if (el) el.style.display = 'none';
         }
 
-        function copyLink() {
+        function copyLink(btn) {
             const link = document.getElementById('share-link').textContent;
             navigator.clipboard.writeText(link).then(() => {
-                const btn = event.target;
                 btn.textContent = 'Copied!';
                 setTimeout(() => btn.textContent = 'Copy Link', 2000);
             });
@@ -543,7 +542,7 @@
             document.getElementById('emoji-grid').innerHTML = lines.join('<br>');
         }
 
-        function copyResult() {
+        function copyResult(btn) {
             const lines = guessHistory
                 .filter(g => !g.revealed)
                 .map(guess => {
@@ -558,8 +557,8 @@
                 });
             const text = 'Custom Connections\n' + lines.join('\n');
             navigator.clipboard.writeText(text).then(() => {
-                event.target.textContent = 'Copied!';
-                setTimeout(() => event.target.textContent = 'Share Result', 2000);
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Share Result', 2000);
             });
         }
 
