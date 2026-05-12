@@ -1,36 +1,219 @@
 // Auth UI and session management
 
 let currentUser = null;
+let authResolve = null; // for awaiting sign-in from requireAuth
 
 async function initAuth() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   currentUser = session?.user || null;
   renderAuthUI();
+  injectAuthModal();
 
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     currentUser = session?.user || null;
     renderAuthUI();
+    if (currentUser && authResolve) {
+      authResolve(true);
+      authResolve = null;
+    }
   });
 }
 
-async function signIn() {
-  const email = prompt('Enter your email:');
-  if (!email) return;
-  const password = prompt('Enter your password (min 6 chars):');
-  if (!password) return;
+function injectAuthModal() {
+  const modal = document.createElement('div');
+  modal.id = 'auth-modal';
+  modal.innerHTML = `
+    <div class="auth-backdrop" onclick="closeAuthModal()"></div>
+    <div class="auth-panel">
+      <h2 id="auth-modal-title">Sign in</h2>
+      <p id="auth-modal-subtitle" class="auth-subtitle">Sign in or create an account</p>
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+        <input type="email" id="auth-email" placeholder="Email" required autocomplete="email">
+        <input type="password" id="auth-password" placeholder="Password" required minlength="6" autocomplete="current-password">
+        <div id="auth-error" class="auth-error"></div>
+        <button type="submit" class="auth-submit" id="auth-submit-btn">Sign in</button>
+      </form>
+      <p class="auth-toggle">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <a href="#" id="auth-toggle-link" onclick="toggleAuthMode(event)">Sign up</a>
+      </p>
+      <button class="auth-close" onclick="closeAuthModal()">&times;</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
 
-  // Try sign in first
-  const { error: signInError } = await supabaseClient.auth.signInWithPassword({ email, password });
+  const style = document.createElement('style');
+  style.textContent = `
+    #auth-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #auth-modal.active { display: flex; }
+    .auth-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(2px);
+    }
+    .auth-panel {
+      position: relative;
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      width: 90%;
+      max-width: 360px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      animation: authSlideIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes authSlideIn {
+      from { transform: scale(0.95) translateY(10px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .auth-panel h2 {
+      font-family: Georgia, serif;
+      font-size: 1.4rem;
+      margin-bottom: 4px;
+    }
+    .auth-subtitle {
+      color: #666;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+    #auth-form input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    #auth-form input:focus {
+      outline: none;
+      border-color: #000;
+    }
+    .auth-error {
+      color: #d32f2f;
+      font-size: 0.82rem;
+      min-height: 20px;
+      margin-bottom: 4px;
+    }
+    .auth-submit {
+      width: 100%;
+      padding: 12px;
+      background: #000;
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .auth-submit:hover { opacity: 0.85; }
+    .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-toggle {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+    .auth-toggle a {
+      color: #000;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .auth-toggle a:hover { text-decoration: underline; }
+    .auth-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #999;
+      line-height: 1;
+    }
+    .auth-close:hover { color: #000; }
+  `;
+  document.head.appendChild(style);
+}
 
-  if (signInError) {
-    // If invalid credentials, try signing up
-    const { error: signUpError } = await supabaseClient.auth.signUp({ email, password });
-    if (signUpError) {
-      alert(signUpError.message);
+let authMode = 'signin'; // 'signin' or 'signup'
+
+function toggleAuthMode(e) {
+  e.preventDefault();
+  authMode = authMode === 'signin' ? 'signup' : 'signin';
+  document.getElementById('auth-modal-title').textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
+  document.getElementById('auth-modal-subtitle').textContent = authMode === 'signin'
+    ? 'Sign in or create an account'
+    : 'Enter your email and choose a password';
+  document.getElementById('auth-submit-btn').textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
+  document.getElementById('auth-toggle-text').textContent = authMode === 'signin'
+    ? "Don't have an account?"
+    : 'Already have an account?';
+  document.getElementById('auth-toggle-link').textContent = authMode === 'signin' ? 'Sign up' : 'Sign in';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errorEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-submit-btn');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+
+  if (authMode === 'signin') {
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      errorEl.textContent = error.message;
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
     } else {
-      alert('Account created! Check your email to confirm, then sign in again.');
+      closeAuthModal();
+    }
+  } else {
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) {
+      errorEl.textContent = error.message;
+      btn.disabled = false;
+      btn.textContent = 'Create account';
+    } else {
+      errorEl.style.color = '#1b5e20';
+      errorEl.textContent = 'Check your email to confirm your account!';
+      btn.disabled = false;
+      btn.textContent = 'Create account';
     }
   }
+}
+
+function signIn() {
+  authMode = 'signin';
+  document.getElementById('auth-modal-title').textContent = 'Sign in';
+  document.getElementById('auth-modal-subtitle').textContent = 'Sign in or create an account';
+  document.getElementById('auth-submit-btn').textContent = 'Sign in';
+  document.getElementById('auth-toggle-text').textContent = "Don't have an account?";
+  document.getElementById('auth-toggle-link').textContent = 'Sign up';
+  document.getElementById('auth-error').textContent = '';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+  document.getElementById('auth-modal').classList.add('active');
+  document.getElementById('auth-email').focus();
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('active');
+  document.getElementById('auth-submit-btn').disabled = false;
+  document.getElementById('auth-submit-btn').textContent = authMode === 'signin' ? 'Sign in' : 'Create account';
 }
 
 async function signOut() {
@@ -49,11 +232,9 @@ function renderAuthUI() {
   }
 
   if (currentUser) {
-    const name = currentUser.user_metadata?.full_name || currentUser.email || 'User';
-    const avatar = currentUser.user_metadata?.avatar_url;
+    const name = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User';
     container.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;">
-        ${avatar ? `<img src="${avatar}" style="width:28px;height:28px;border-radius:50%;" alt="">` : ''}
         <a href="/profile.html" style="color:#000;text-decoration:none;font-weight:500;">${name}</a>
         <button onclick="signOut()" style="background:none;border:1px solid #ddd;border-radius:16px;padding:4px 12px;cursor:pointer;font-size:0.8rem;">Sign out</button>
       </div>
@@ -67,8 +248,6 @@ function renderAuthUI() {
 
 function requireAuth(action) {
   if (currentUser) return true;
-  if (confirm(`Sign in to ${action}?`)) {
-    signIn();
-  }
+  signIn();
   return false;
 }
