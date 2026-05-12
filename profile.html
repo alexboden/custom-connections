@@ -123,6 +123,27 @@
             background: #f9f9f9;
             border-radius: 12px;
         }
+        .profile-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e0e0e0;
+            flex-shrink: 0;
+        }
+        .profile-avatar-initials {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #000;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
 .profile-name { font-size: 1.2rem; font-weight: 700; }
         .profile-email { font-size: 0.85rem; color: #666; }
 
@@ -226,6 +247,42 @@
             margin-bottom: 12px;
         }
         .edit-fields input:focus { outline: 2px solid #000; border-color: transparent; }
+        .avatar-upload-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .avatar-upload-area .avatar-preview {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e0e0e0;
+        }
+        .avatar-upload-area .avatar-preview-initials {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #000;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .avatar-upload-btn {
+            background: none !important;
+            color: #333 !important;
+            border: 1px solid #ddd !important;
+            border-radius: 16px !important;
+            padding: 8px 16px !important;
+            font-size: 0.82rem !important;
+            cursor: pointer;
+        }
+        .avatar-upload-btn:hover { background: #f5f5f5 !important; }
+        .avatar-uploading { font-size: 0.82rem; color: #666; }
         .edit-fields .btn-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
         .edit-fields button {
             background: #000;
@@ -335,9 +392,67 @@
             document.getElementById('edit-fields').classList.toggle('open');
         }
 
+        function getInitials(username, displayName) {
+            const name = displayName || username || '?';
+            return name.charAt(0).toUpperCase();
+        }
+
+        function renderAvatar(avatarUrl, username, displayName, size = 64) {
+            if (avatarUrl) {
+                return `<img class="profile-avatar" src="${avatarUrl}" alt="Avatar" style="width:${size}px;height:${size}px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="profile-avatar-initials" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px;display:none">${getInitials(username, displayName)}</span>`;
+            }
+            return `<span class="profile-avatar-initials" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px">${getInitials(username, displayName)}</span>`;
+        }
+
+        async function uploadAvatar(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('avatar-upload-status');
+            status.className = 'avatar-uploading';
+            status.textContent = 'Uploading...';
+
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                status.style.color = '#611a15';
+                status.textContent = 'File too large (max 2MB)';
+                return;
+            }
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            const path = `${currentUser.id}/avatar.${ext}`;
+
+            // Upload to Supabase Storage
+            const { error } = await supabaseClient.storage
+                .from('avatars')
+                .upload(path, file, { upsert: true, contentType: file.type });
+
+            if (error) {
+                status.style.color = '#611a15';
+                status.textContent = 'Upload failed: ' + error.message;
+                return;
+            }
+
+            // Get public URL
+            const { data: urlData } = supabaseClient.storage.from('avatars').getPublicUrl(path);
+            const publicUrl = urlData.publicUrl + '?t=' + Date.now(); // cache bust
+
+            // Update hidden input
+            document.getElementById('input-avatar-url').value = publicUrl;
+
+            // Update preview
+            const username = document.getElementById('input-username').value.trim();
+            const displayName = document.getElementById('input-display-name').value.trim();
+            document.getElementById('avatar-edit-preview').innerHTML = renderAvatar(publicUrl, username, displayName, 48);
+
+            status.style.color = '#1b5e20';
+            status.textContent = 'Uploaded! Click Save to apply.';
+        }
+
         async function saveProfile() {
             const username = document.getElementById('input-username').value.trim().toLowerCase();
             const displayName = document.getElementById('input-display-name').value.trim();
+            const avatarUrl = document.getElementById('input-avatar-url').value.trim();
 
             if (!username || !/^[a-zA-Z0-9_-]{3,24}$/.test(username)) {
                 const msg = document.getElementById('save-msg');
@@ -349,7 +464,8 @@
 
             const { error } = await supabaseClient.from('profiles').update({
                 username: username,
-                display_name: displayName || null
+                display_name: displayName || null,
+                avatar_url: avatarUrl || null
             }).eq('id', currentUser.id);
 
             const msg = document.getElementById('save-msg');
@@ -364,6 +480,8 @@
                 if (displayName) {
                     document.getElementById('profile-display-name').textContent = displayName;
                 }
+                // Update avatar
+                document.getElementById('profile-avatar-container').innerHTML = renderAvatar(avatarUrl, username, displayName);
             }
             setTimeout(() => msg.textContent = '', 2000);
         }
@@ -439,8 +557,11 @@
 
             const displayUsername = username ? '@' + username : (name || 'My Profile');
 
+            const avatarUrl = profile?.avatar_url || '';
+
             let html = `
                 <div class="profile-header">
+                    <span id="profile-avatar-container">${renderAvatar(avatarUrl, username, name)}</span>
                     <div>
                         <div class="profile-name" id="profile-display-username">${displayUsername}</div>
                         <div class="profile-email" id="profile-display-name">${username ? name : ''}</div>
@@ -454,6 +575,14 @@
                         <input type="text" id="input-username" value="${username}" placeholder="Choose a username" pattern="[a-zA-Z0-9_-]+" minlength="3" maxlength="24">
                         <label>Display Name</label>
                         <input type="text" id="input-display-name" value="${name}" placeholder="Your display name">
+                        <label>Profile Picture</label>
+                        <div class="avatar-upload-area">
+                            <span id="avatar-edit-preview">${renderAvatar(avatarUrl, username, name, 48)}</span>
+                            <button type="button" class="avatar-upload-btn" onclick="document.getElementById('input-avatar-file').click()">Upload Photo</button>
+                            <input type="file" id="input-avatar-file" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
+                            <span id="avatar-upload-status"></span>
+                        </div>
+                        <input type="hidden" id="input-avatar-url" value="${avatarUrl}">
                         <div class="btn-row">
                             <button onclick="saveProfile()">Save</button>
                             <span class="save-msg" id="save-msg"></span>
@@ -515,7 +644,7 @@
         async function loadPublicProfile(username) {
             // Look up user by username
             const { data: profile, error } = await supabaseClient
-                .from('profiles').select('id, username, display_name').eq('username', username).single();
+                .from('profiles').select('id, username, display_name, avatar_url').eq('username', username).single();
 
             if (error || !profile) {
                 document.getElementById('content').innerHTML = `
@@ -535,6 +664,7 @@
             }
 
             const name = profile.display_name || '';
+            const avatarUrl = profile.avatar_url || '';
             const displayUsername = '@' + profile.username;
 
             // Fetch their puzzles
@@ -551,6 +681,7 @@
 
             let html = `
                 <div class="profile-header">
+                    ${renderAvatar(avatarUrl, profile.username, name)}
                     <div>
                         <div class="profile-name">${displayUsername}</div>
                         <div class="profile-email">${name}</div>

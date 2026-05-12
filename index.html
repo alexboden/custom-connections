@@ -44,6 +44,11 @@
             font-weight: 500;
         }
         .nav-links a:hover { text-decoration: underline; }
+        .nav-links > span {
+            color: #999;
+            margin-right: 16px;
+            font-weight: 500;
+        }
         .help-btn {
             width: 18px;
             height: 18px;
@@ -163,6 +168,30 @@
             color: #666;
             text-transform: none;
             letter-spacing: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            vertical-align: middle;
+        }
+        .puzzle-author-avatar {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            object-fit: cover;
+            vertical-align: middle;
+        }
+        .puzzle-author-initials {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #000;
+            color: #fff;
+            font-size: 0.6rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
         }
         .puzzle-stats {
             display: flex;
@@ -203,6 +232,7 @@
 </head>
 <body>
     <div class="nav-links">
+        <span>Browse</span>
         <a href="/create.html">Create</a>
         <button class="help-btn" onclick="document.getElementById('help-modal').classList.add('active')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
     </div>
@@ -308,10 +338,14 @@
                 if (creatorIds.length > 0) {
                     const { data: profiles } = await supabaseClient
                         .from('profiles')
-                        .select('id, username')
+                        .select('id, username, avatar_url')
                         .in('id', creatorIds);
-                    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.username]));
-                    data.forEach(p => { p._username = profileMap[p.creator_id] || null; });
+                    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, { username: p.username, avatar_url: p.avatar_url }]));
+                    data.forEach(p => {
+                        const prof = profileMap[p.creator_id];
+                        p._username = prof?.username || null;
+                        p._avatar_url = prof?.avatar_url || null;
+                    });
                 }
             }
 
@@ -351,12 +385,16 @@
                 const categories = deserialize(puzzle.data);
                 const date = new Date(puzzle.created_at).toLocaleDateString();
                 const username = puzzle._username;
+                const avatarUrl = puzzle._avatar_url;
                 const card = document.createElement('a');
                 card.className = 'puzzle-card';
                 card.href = '/play.html?p=' + puzzle.id;
                 const solvedBadge = userPlays.has(puzzle.id) ? '<span class="puzzle-solved">Solved</span>' : '';
+                const avatarHtml = username ? (avatarUrl
+                    ? `<img class="puzzle-author-avatar" src="${avatarUrl}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="puzzle-author-initials" style="display:none">${username.charAt(0).toUpperCase()}</span>`
+                    : `<span class="puzzle-author-initials">${username.charAt(0).toUpperCase()}</span>`) : '';
                 card.innerHTML = `
-                    <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id, puzzle.name)}${username ? `<span class="puzzle-author"> by ${username}</span>` : ''}${solvedBadge}</div>
+                    <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id, puzzle.name)}${username ? `<span class="puzzle-author">${avatarHtml} by ${username}</span>` : ''}${solvedBadge}</div>
                     <div class="puzzle-stats">
                         <span>&#9650;${puzzle.upvotes} &#9660;${puzzle.downvotes}</span>
                         <span>&#9654; ${puzzle.play_count} plays</span>
