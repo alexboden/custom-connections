@@ -242,7 +242,7 @@
 </head>
 <body>
     <h1>Custom Connections</h1>
-    <p class="subtitle">Create and share your own Connections puzzle</p>
+    <p class="subtitle"><a href="#" id="create-link" onclick="sessionStorage.removeItem('puzzle'); location.hash=''; location.reload(); return false;" style="color: #6f6f6f; text-decoration: none;">Create</a> and share your own Connections puzzle</p>
 
     <!-- CREATOR VIEW -->
     <div id="creator">
@@ -252,7 +252,6 @@
 
     <!-- GAME VIEW -->
     <div id="game">
-        <p class="subtitle"><a href="#" onclick="sessionStorage.removeItem('puzzle'); location.hash=''; location.reload(); return false;" style="color: #6f6f6f;">Create your own puzzle</a></p>
         <div class="message info" id="game-message" style="display:none;"></div>
         <div class="solved-groups" id="solved-groups"></div>
         <div class="grid" id="grid"></div>
