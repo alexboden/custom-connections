@@ -392,16 +392,15 @@
             document.getElementById('edit-fields').classList.toggle('open');
         }
 
-        function getInitials(username, displayName) {
-            const name = displayName || username || '?';
-            return name.charAt(0).toUpperCase();
+        function getInitials(username) {
+            return (username || '?').charAt(0).toUpperCase();
         }
 
-        function renderAvatar(avatarUrl, username, displayName, size = 64) {
+        function renderAvatar(avatarUrl, username, size = 64) {
             if (avatarUrl) {
-                return `<img class="profile-avatar" src="${avatarUrl}" alt="Avatar" style="width:${size}px;height:${size}px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="profile-avatar-initials" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px;display:none">${getInitials(username, displayName)}</span>`;
+                return `<img class="profile-avatar" src="${avatarUrl}" alt="Avatar" style="width:${size}px;height:${size}px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="profile-avatar-initials" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px;display:none">${getInitials(username)}</span>`;
             }
-            return `<span class="profile-avatar-initials" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px">${getInitials(username, displayName)}</span>`;
+            return `<span class="profile-avatar-initials" style="width:${size}px;height:${size}px;font-size:${size * 0.4}px">${getInitials(username)}</span>`;
         }
 
         async function uploadAvatar(input) {
@@ -442,8 +441,7 @@
 
             // Update preview
             const username = document.getElementById('input-username').value.trim();
-            const displayName = document.getElementById('input-display-name').value.trim();
-            document.getElementById('avatar-edit-preview').innerHTML = renderAvatar(publicUrl, username, displayName, 48);
+            document.getElementById('avatar-edit-preview').innerHTML = renderAvatar(publicUrl, username, 48);
 
             status.style.color = '#1b5e20';
             status.textContent = 'Uploaded! Click Save to apply.';
@@ -451,7 +449,6 @@
 
         async function saveProfile() {
             const username = document.getElementById('input-username').value.trim().toLowerCase();
-            const displayName = document.getElementById('input-display-name').value.trim();
             const avatarUrl = document.getElementById('input-avatar-url').value.trim();
 
             if (!username || !/^[a-zA-Z0-9_-]{3,24}$/.test(username)) {
@@ -464,7 +461,6 @@
 
             const { error } = await supabaseClient.from('profiles').update({
                 username: username,
-                display_name: displayName || null,
                 avatar_url: avatarUrl || null
             }).eq('id', currentUser.id);
 
@@ -475,13 +471,8 @@
             } else {
                 msg.style.color = '#1b5e20';
                 msg.textContent = 'Saved!';
-                // Update header display
                 document.getElementById('profile-display-username').textContent = '@' + username;
-                if (displayName) {
-                    document.getElementById('profile-display-name').textContent = displayName;
-                }
-                // Update avatar
-                document.getElementById('profile-avatar-container').innerHTML = renderAvatar(avatarUrl, username, displayName);
+                document.getElementById('profile-avatar-container').innerHTML = renderAvatar(avatarUrl, username);
             }
             setTimeout(() => msg.textContent = '', 2000);
         }
@@ -528,7 +519,6 @@
             const { data: profile } = await supabaseClient
                 .from('profiles').select('*').eq('id', currentUser.id).single();
 
-            const name = profile?.display_name || currentUser.user_metadata?.full_name || '';
             const username = profile?.username || '';
 
             // If viewing own profile via username, redirect to clean URL
@@ -555,16 +545,15 @@
             const totalCreated = puzzles?.length || 0;
             const totalVotes = puzzles?.reduce((sum, p) => sum + p.vote_count, 0) || 0;
 
-            const displayUsername = username ? '@' + username : (name || 'My Profile');
+            const displayUsername = username ? '@' + username : 'My Profile';
 
             const avatarUrl = profile?.avatar_url || '';
 
             let html = `
                 <div class="profile-header">
-                    <span id="profile-avatar-container">${renderAvatar(avatarUrl, username, name)}</span>
+                    <span id="profile-avatar-container">${renderAvatar(avatarUrl, username)}</span>
                     <div>
                         <div class="profile-name" id="profile-display-username">${displayUsername}</div>
-                        <div class="profile-email" id="profile-display-name">${username ? name : ''}</div>
                     </div>
                 </div>
 
@@ -573,11 +562,9 @@
                     <div class="edit-fields" id="edit-fields">
                         <label>Username</label>
                         <input type="text" id="input-username" value="${username}" placeholder="Choose a username" pattern="[a-zA-Z0-9_-]+" minlength="3" maxlength="24">
-                        <label>Display Name</label>
-                        <input type="text" id="input-display-name" value="${name}" placeholder="Your display name">
                         <label>Profile Picture</label>
                         <div class="avatar-upload-area">
-                            <span id="avatar-edit-preview">${renderAvatar(avatarUrl, username, name, 48)}</span>
+                            <span id="avatar-edit-preview">${renderAvatar(avatarUrl, username, 48)}</span>
                             <button type="button" class="avatar-upload-btn" onclick="document.getElementById('input-avatar-file').click()">Upload Photo</button>
                             <input type="file" id="input-avatar-file" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
                             <span id="avatar-upload-status"></span>
@@ -644,7 +631,7 @@
         async function loadPublicProfile(username) {
             // Look up user by username
             const { data: profile, error } = await supabaseClient
-                .from('profiles').select('id, username, display_name, avatar_url').eq('username', username).single();
+                .from('profiles').select('id, username, avatar_url').eq('username', username).single();
 
             if (error || !profile) {
                 document.getElementById('content').innerHTML = `
@@ -663,7 +650,6 @@
                 return;
             }
 
-            const name = profile.display_name || '';
             const avatarUrl = profile.avatar_url || '';
             const displayUsername = '@' + profile.username;
 
@@ -681,10 +667,9 @@
 
             let html = `
                 <div class="profile-header">
-                    ${renderAvatar(avatarUrl, profile.username, name)}
+                    ${renderAvatar(avatarUrl, profile.username)}
                     <div>
                         <div class="profile-name">${displayUsername}</div>
-                        <div class="profile-email">${name}</div>
                     </div>
                 </div>
 

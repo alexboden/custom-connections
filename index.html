@@ -394,7 +394,7 @@
                     ? `<img class="puzzle-author-avatar" src="${avatarUrl}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="puzzle-author-initials" style="display:none">${username.charAt(0).toUpperCase()}</span>`
                     : `<span class="puzzle-author-initials">${username.charAt(0).toUpperCase()}</span>`) : '';
                 card.innerHTML = `
-                    <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id, puzzle.name)}${username ? `<span class="puzzle-author">${avatarHtml} by ${username}</span>` : ''}${solvedBadge}</div>
+                    <div class="puzzle-title">${getPuzzleTitle(categories, puzzle.id, puzzle.name)}${username ? `<span class="puzzle-author"> by ${username} ${avatarHtml}</span>` : ''}${solvedBadge}</div>
                     <div class="puzzle-stats">
                         <span>&#9650;${puzzle.upvotes} &#9660;${puzzle.downvotes}</span>
                         <span>&#9654; ${puzzle.play_count} plays</span>
