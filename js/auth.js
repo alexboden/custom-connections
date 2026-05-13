@@ -287,7 +287,7 @@ async function signOut() {
   renderAuthUI();
 }
 
-function renderAuthUI() {
+async function renderAuthUI() {
   let container = document.getElementById('auth-container');
   if (!container) {
     container = document.createElement('div');
@@ -297,11 +297,17 @@ function renderAuthUI() {
   }
 
   if (currentUser) {
-    const name = currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User';
+    const { data: profile } = await supabaseClient
+      .from('profiles').select('username, avatar_url').eq('id', currentUser.id).single();
+    const name = profile?.username || currentUser.email?.split('@')[0] || 'User';
+    const avatarUrl = profile?.avatar_url;
     const isProfilePage = window.location.pathname.endsWith('profile.html');
+    const avatarHtml = avatarUrl
+      ? `<img src="${avatarUrl}" alt="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="width:24px;height:24px;border-radius:50%;background:#000;color:#fff;font-size:0.6rem;font-weight:700;display:none;align-items:center;justify-content:center;">${name.charAt(0).toUpperCase()}</span>`
+      : `<span style="width:24px;height:24px;border-radius:50%;background:#000;color:#fff;font-size:0.6rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">${name.charAt(0).toUpperCase()}</span>`;
     container.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;">
-        <a href="/profile.html" style="color:#000;text-decoration:none;font-weight:500;">${name}</a>
+        <a href="/profile.html" style="color:#000;text-decoration:none;font-weight:500;display:flex;align-items:center;gap:6px;">${name} ${avatarHtml}</a>
         ${isProfilePage ? '<button onclick="signOut()" style="background:none;border:1px solid #ddd;border-radius:16px;padding:4px 12px;cursor:pointer;font-size:0.8rem;">Sign out</button>' : ''}
       </div>
     `;
